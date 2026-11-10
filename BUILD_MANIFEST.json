@@ -1,0 +1,296 @@
+{
+  "upstream": "a59213f3ec6cd302fa32c2042b2700c9c24d991a",
+  "board": "lilygo-t-embed-cc1101",
+  "plus_uses_same_profile": true,
+  "chip": "ESP32-S3",
+  "flash_bytes": 16777216,
+  "app_partition_offset": "0x10000",
+  "app_partition_bytes": 4653056,
+  "app_bytes": 4314176,
+  "app_partition_usage_percent": 92.72,
+  "merged_bytes": 4379712,
+  "static_ram_bytes": 123528,
+  "hardware_tested": false,
+  "dependencies": [
+    {
+      "type": "library",
+      "name": "Adafruit Si4713 Library",
+      "version": "1.2.3",
+      "spec": {
+        "owner": "adafruit",
+        "id": 756,
+        "name": "Adafruit Si4713 Library",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "AnimatedGIF",
+      "version": "2.2.3",
+      "spec": {
+        "owner": "bitbank2",
+        "id": 10952,
+        "name": "AnimatedGIF",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "ArduinoJson",
+      "version": "7.4.3",
+      "spec": {
+        "owner": "bblanchon",
+        "id": 64,
+        "name": "ArduinoJson",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "AsyncTCP",
+      "version": "3.5.0",
+      "spec": {
+        "owner": "esp32async",
+        "id": 18273,
+        "name": "AsyncTCP",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "ESP32Time",
+      "version": "2.0.6",
+      "spec": {
+        "owner": "fbiego",
+        "id": 11703,
+        "name": "ESP32Time",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "ESP8266Audio",
+      "version": "2.4.1",
+      "spec": {
+        "owner": "earlephilhower",
+        "id": 1964,
+        "name": "ESP8266Audio",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "ESP8266SAM",
+      "version": "1.1.0",
+      "spec": {
+        "owner": "earlephilhower",
+        "id": 2885,
+        "name": "ESP8266SAM",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "ESPAsyncWebServer",
+      "version": "3.12.1",
+      "spec": {
+        "owner": "esp32async",
+        "id": 18274,
+        "name": "ESPAsyncWebServer",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "FFT",
+      "version": "0.0.1",
+      "spec": {
+        "owner": "tinyu-zhao",
+        "id": 12741,
+        "name": "FFT",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "FastLED",
+      "version": "3.10.3",
+      "spec": {
+        "owner": "fastled",
+        "id": 126,
+        "name": "FastLED",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "JPEGDecoder",
+      "version": "2.0.0",
+      "spec": {
+        "owner": "bodmer",
+        "id": 1467,
+        "name": "JPEGDecoder",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "LibSSH-ESP32",
+      "version": "5.10.0",
+      "spec": {
+        "owner": "ewpa",
+        "id": 8250,
+        "name": "LibSSH-ESP32",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "NTPClient",
+      "version": "3.2.1",
+      "spec": {
+        "owner": "arduino-libraries",
+        "id": 551,
+        "name": "NTPClient",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "NimBLE-Arduino",
+      "version": "2.5.2",
+      "spec": {
+        "owner": "h2zero",
+        "id": 11070,
+        "name": "NimBLE-Arduino",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "PNGdec",
+      "version": "1.1.6",
+      "spec": {
+        "owner": "bitbank2",
+        "id": 12397,
+        "name": "PNGdec",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "RF24",
+      "version": "1.4.11",
+      "spec": {
+        "owner": "nrf24",
+        "id": 433,
+        "name": "RF24",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "RadioLib",
+      "version": "7.8.1",
+      "spec": {
+        "owner": "jgromes",
+        "id": 5795,
+        "name": "RadioLib",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "Time",
+      "version": "1.6.1",
+      "spec": {
+        "owner": "paulstoffregen",
+        "id": 44,
+        "name": "Time",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "TinyGPSPlus",
+      "version": "1.1.0",
+      "spec": {
+        "owner": "mikalhart",
+        "id": 1655,
+        "name": "TinyGPSPlus",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "WebSockets",
+      "version": "2.7.2",
+      "spec": {
+        "owner": "links2004",
+        "id": 549,
+        "name": "WebSockets",
+        "requirements": null,
+        "uri": null
+      }
+    },
+    {
+      "type": "library",
+      "name": "XPowersLib",
+      "version": "0.3.3",
+      "spec": {
+        "owner": "lewisxhe",
+        "id": 14299,
+        "name": "XPowersLib",
+        "requirements": null,
+        "uri": null
+      }
+    }
+  ],
+  "library_commits": {
+    "Adafruit BusIO": "27230c1ddbb3983e1bd5abc025fcc84f6a8c2c5e",
+    "Adafruit PN532": "e91d69575fa6a6052bff779885a1c616825fc0af",
+    "BER-TLV": "bd61b70eaa360779605b10f0641bcf01d00bee76",
+    "ESP Amiibolink": "fc2641220476feb10368f110002a1368d5c3556d",
+    "ESP Chameleon Ultra": "f66f3547595c9542c6b4fff54f4486fcbe1a6101",
+    "ESP PN32BLE": "542f121cdcb6aa7389428a79385bb8a4b75848fa",
+    "ESP PN532 UART": "879e5861e4c4b5ad18ad66aeb62f9c5f0b14590f",
+    "ESP PN532Killer": "71bf1104ebf76c395436663cd516acb99754c354",
+    "ESP32-PSRamFS": "5ace2e66c10d5647f10f48b22a79d9b12a73db7b",
+    "IRremoteESP8266": "22cd38c653c4bdc61c1e7dad18affe58e5915177",
+    "NFC-RFAL-fork": "7bde4587ea44c36c178a43d083d7a7345c1e4cfe",
+    "OneWire": "42e045e0f8c6a4dd8bfb8917f58c5b38585f6b1e",
+    "RFID_MFRC522v2": "a6977dfa0ccfb85318d72e74f09a096fbdbc7680",
+    "ST25R3916-fork": "0c8e00f49d12881d1cff6d6f0879b90ce7ed4033",
+    "SimpleCLI": "b23d377935c80cc5a9214bcf24e1f1cf68debc6a",
+    "SmartRC-CC1101-Driver-Lib": "7bba5217dc0632f718a3278dc27e401016741a95",
+    "WireGuard-ESP32": "90aa6b43965c9718d62e59ddd709f856722f8e0b",
+    "mquickjs": "169b5ea7723bf43d7be9631a14f9c2a1ed8c69e1"
+  },
+  "release": "v0.1.0-test.2",
+  "merged_sha256": "154a65cf5d97afebbc2b0be7e02f9d394e14f816e336b422356689f3f9a25a23",
+  "removed_upstream_features": [
+    "BLE example: Reverse Shell",
+    "BLE example: WiFi Credentials"
+  ],
+  "removed_payload_byte_scan": "passed",
+  "ESET_scan": "not performed"
+}
