@@ -1,0 +1,22 @@
+name: Build pinned Bruce bridge
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install platformio==6.2.0
+      - run: python firmware/apply.py
+      - run: pio run -d firmware/upstream -e lilygo-t-embed-cc1101 -j 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bruce-control-t-embed-cc1101
+          path: |
+            firmware/upstream/.pio/build/lilygo-t-embed-cc1101/*.bin
+            firmware/upstream/*.bin

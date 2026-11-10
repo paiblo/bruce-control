@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.cloudflare/
+.pio/
+.env*
+!.env.example
+*.local.*
+firmware/upstream/
+playwright-report/
+test-results/
+*.log

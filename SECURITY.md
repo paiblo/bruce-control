@@ -1,0 +1,15 @@
+# Sicherheit der Testversion
+
+- TLS/WSS mit Root-CA-Prüfung auf ESP32. Keine `setInsecure`- oder Zertifikatsausnahme. Zeitabgleich vor TLS. Öffentliche GTS-/ISRG-Roots stehen in `bridge_ca.h`.
+- Gerät erzeugt zufällige 128-Bit-ID und 256-Bit-Token mit ESP-Hardware-RNG, speichert in NVS und registriert nur einen Token-Hash im gerätespezifischen Durable Object. Wer Zugriff auf NVS/USB/physische Hardware hat, liegt außerhalb der Browser-Isolation.
+- Registrierung ist öffentlich erreichbar, aber zufällige IDs, Besitzbindung und IP-Limiter begrenzen Missbrauch. Kein zentraler Hersteller-Geräteattestierungsdienst. Die Registrierung beweist Besitz des gewählten Tokens, nicht die Echtheit eines LILYGO.
+- 8-stelliger Kopplungscode, 120 Sekunden, höchstens 5 Versuche; Browser-Token wird erst durch lokalen Encoder am Gerät aktiviert. Kopplungsmenü blockiert Remote-Befehle. Nur ein Browser-Token pro Gerät; neues Pairing ersetzt das alte. „Revoke iPhone“ widerruft am Relay.
+- Tokens nur im Auth-Frame oder HTTPS-Body, nie in URL/Query. Browser-Token in IndexedDB, nicht im Bundle. Hashes serverseitig, Vergleich ohne frühzeitigen Zeichenabbruch. Browser-Gültigkeit 30 Tage; Socket maximal 24 Stunden mit erneuter Authentifizierung.
+- Sitzungsnonce, steigende Sequenz, UUID, ±30-Sekunden-Zeitfenster, deduplizierte IDs und Geräteledger; abgebrochene Befehle werden nie automatisch wiederholt. Bei Timeout kann Ausführung bereits erfolgt sein. Neustart und Reconnect ergeben neue Browsernonce.
+- HTTPS-Origin-Allowlist, anonyme Socketzahl begrenzt, Auth innerhalb 10 Sekunden, 20 Nachrichten/s pro Socket, begrenzte Framegrößen und maximal 8 offene Befehle. IP-Limiter 60 HTTP-Anfragen/min/Cloudflare-Standort. Kein globales Abrechnungsbudget; Free-Plan-Limits prüfen.
+- Datei-Schreiben nur `/BruceControl/`, kein Überschreiben bestehender Dateien, temporäre Upload-Datei mit Offset und abschließendem Rename. Lesen schützt bekannte Konfigurationen; keine allgemeine DLP-Klassifizierung beliebiger vom Benutzer benannter Dateien. Nicht absichtlich private Daten in freigegebene Ordner legen.
+- GPIO-Schreiben, beliebige CLI-Befehle, Angriffsfunktionen, Sub-GHz-Senden und RFID-Emulation sind nicht freigegeben. IR nur ausdrücklich über Pfad und Bestätigung.
+- Relay persistiert keine GPS-Punkte, Bildschirmbilder, Ausgaben oder Dateiinhalte. Nur Hashes, Kopplungszustand, Sequenz in Socket-Anhang und kurzlebige Request-IDs. Logs/Traces aktiviert, Invocation-Logs abgeschaltet; kein Protokollieren von Bodies oder Auth-Frames. Cloudflare terminiert TLS: dies ist keine Ende-zu-Ende-Verschlüsselung gegen den Relay-Betreiber.
+- Browserbibliothek/Tracks lokal. OSM-Kacheln nur nach Einwilligung. Kein automatischer Upload von Tracks, Standort nur aktiv alle 5 s.
+
+Grenzen: keine unabhängige Sicherheitsprüfung, kein physischer Hardwaretest, keine verschlüsselte NVS-Konfiguration oder signierte Secure-Boot-Kette durch diese Erweiterung. Firmware ist ein Testbuild auf gepinntem Upstream. Sicherheitsfehler zunächst privat im eigenen Repository behandeln; keine Tokens an Issues anhängen.
