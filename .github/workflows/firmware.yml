@@ -14,6 +14,7 @@ jobs:
       - run: pip install platformio==6.2.0
       - run: python firmware/apply.py
       - run: pio run -d firmware/upstream -e lilygo-t-embed-cc1101 -j 2
+      - run: python firmware/check_stack.py firmware/upstream/.pio/build/lilygo-t-embed-cc1101/firmware.elf --check
       - uses: actions/upload-artifact@v4
         with:
           name: bruce-control-t-embed-cc1101

@@ -21,7 +21,7 @@ Die Entwicklungsadresse ist http://localhost:5173/bruce-control/. Produktionsbui
 
 ## Downloads
 
-[Erste Testversion mit Firmware und SHA256-Prüfsummen](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.2). Erst Backup erstellen und [Flashanleitung](FIRMWARE_FLASHING.md) lesen.
+[Erste Testversion mit Firmware und SHA256-Prüfsummen](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.3). Erst Backup erstellen und [Flashanleitung](FIRMWARE_FLASHING.md) lesen.
 
 ## Firmware
 
@@ -47,3 +47,5 @@ Der Build zieht exakt Bruce-Commit `a59213f3ec6cd302fa32c2042b2700c9c24d991a`. B
 - [Quelleninventar](docs/SOURCES.md)
 
 `tests/` enthält ausdrücklich als Tests erkennbare Gerätesimulationen. Kein Test belegt physische Hardwarefunktion.
+
+Bei bereits installiertem Bruce-Control-Build: scripts/resume-flash-test3.ps1 validiert das vorhandene private Vollbackup und aktualisiert nur die App bei 0x10000. Test 3 behebt den nachgewiesenen statischen CLI-Stackbudgetfehler und erhaelt alle Upstream-Funktionen.
