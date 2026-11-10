@@ -74,3 +74,7 @@ esptool --chip esp32s3 --port PORT --baud 460800 write-flash 0x0 bruce-before-co
 Alternativ offizielle Firmware ausschließlich über [Bruce Installationsanleitung](https://wiki.bruce.computer/getting-started/) / [offiziellen Web-Flasher](https://bruce.computer/flasher) für das passende T-Embed CC1101-Modell laden. Anschließend gespeicherte Konfiguration prüfen und SD-Backup wiederherstellen. BOOT/RESET-Downloadmodus funktioniert unabhängig von einer laufenden Bridge, sofern die Hardware intakt ist.
 
 Diese Anleitung beschreibt den vorgesehenen Ablauf. In dieser Sitzung wurde kein Gerät geflasht, kein Backup gelesen und keine Wiederherstellung auf Hardware geprüft.
+
+## Testversion 2
+
+Aktuelle Bildgroessen: App 4314176 Bytes, merged 4379712 Bytes; App-Partition 92.72 Prozent belegt. Zwei unerwuenschte eingebaute BLE-Beispielvorlagen wurden entfernt (Reverse Shell, WiFi Credentials). ESET-Freigabe wurde nicht getestet. Wiederaufnahmestarter: scripts/resume-flash-test2.ps1; er validiert ein vorhandenes privates Vollbackup vor dem Schreiben.

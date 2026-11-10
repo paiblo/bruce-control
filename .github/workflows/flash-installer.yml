@@ -33,8 +33,8 @@ jobs:
           $WorkDir = Join-Path $env:RUNNER_TEMP 'BruceControl-test'
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/flash-windows.ps1 -Port COM_NO_SUCH_DEVICE -WorkDir $WorkDir
           if ($LASTEXITCODE -ne 1) { throw 'Expected a safe stop for the missing USB device.' }
-          $Image = Join-Path $WorkDir 'bruce-control-t-embed-cc1101-plus-merged.bin'
-          if ((Get-FileHash $Image -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f292173b33babbb1f3dbc3d976c307e6268a307c265d3e345ae6213fcb13c96a') { throw 'Image hash mismatch' }
+          $Image = Join-Path $WorkDir 'bruce-control-test2-merged.bin'
+          if ((Get-FileHash $Image -Algorithm SHA256).Hash.ToLowerInvariant() -ne '154a65cf5d97afebbc2b0be7e02f9d394e14f816e336b422356689f3f9a25a23') { throw 'Image hash mismatch' }
           if (Get-ChildItem $WorkDir -Filter 'PRIVATE-backup-*') { throw 'Unexpected hardware backup in a hardware-free test' }
           Write-Output 'PASS: Windows startup, venv, esptool, pinned script and image checks; missing USB safely rejected.'
           exit 0
