@@ -1,0 +1,5 @@
+{
+  "serial_handler": 1440,
+  "combined_static_frames": 1440,
+  "execute_inlined_into_handler": true
+}
