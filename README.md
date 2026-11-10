@@ -21,7 +21,7 @@ Die Entwicklungsadresse ist http://localhost:5173/bruce-control/. Produktionsbui
 
 ## Downloads
 
-[Erste Testversion mit Firmware und SHA256-Prüfsummen](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.1). Erst Backup erstellen und [Flashanleitung](FIRMWARE_FLASHING.md) lesen.
+[Erste Testversion mit Firmware und SHA256-Prüfsummen](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.2). Erst Backup erstellen und [Flashanleitung](FIRMWARE_FLASHING.md) lesen.
 
 ## Firmware
 

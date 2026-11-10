@@ -6,9 +6,9 @@
   "flash_bytes": 16777216,
   "app_partition_offset": "0x10000",
   "app_partition_bytes": 4653056,
-  "app_bytes": 4315024,
-  "app_partition_usage_percent": 92.74,
-  "merged_bytes": 4380560,
+  "app_bytes": 4314176,
+  "app_partition_usage_percent": 92.72,
+  "merged_bytes": 4379712,
   "static_ram_bytes": 123528,
   "hardware_tested": false,
   "dependencies": [
@@ -284,5 +284,13 @@
     "SmartRC-CC1101-Driver-Lib": "7bba5217dc0632f718a3278dc27e401016741a95",
     "WireGuard-ESP32": "90aa6b43965c9718d62e59ddd709f856722f8e0b",
     "mquickjs": "169b5ea7723bf43d7be9631a14f9c2a1ed8c69e1"
-  }
+  },
+  "release": "v0.1.0-test.2",
+  "merged_sha256": "154a65cf5d97afebbc2b0be7e02f9d394e14f816e336b422356689f3f9a25a23",
+  "removed_upstream_features": [
+    "BLE example: Reverse Shell",
+    "BLE example: WiFi Credentials"
+  ],
+  "removed_payload_byte_scan": "passed",
+  "ESET_scan": "not performed"
 }

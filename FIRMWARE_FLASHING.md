@@ -2,7 +2,7 @@
 
 Die Bridge ist für Bruce-Boardprofil `lilygo-t-embed-cc1101` gebaut. Upstream verwendet dieses Profil auch für Plus: `interface.cpp` initialisiert ausdrücklich die Plus-nRF24-Pins 43/44. Board ESP32-S3, 16 MiB Flash / OPI-PSRAM, ST7789 170×320 mit Rotation 3. Keine neue Pinbelegung durch die Bridge. Trotzdem vor dem Flashen den genauen Modellaufdruck prüfen.
 
-Download: [Release v0.1.0-test.1](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.1). Für den normalen Test das **merged**-Image verwenden; die Datei mit „app-0x10000“ ist nur für bewusstes Einzel-App-Flashen.
+Download: [Release v0.1.0-test.2](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.2). Für den normalen Test das **merged**-Image verwenden; die Datei mit „app-0x10000“ ist nur für bewusstes Einzel-App-Flashen.
 
 ## Windows-Starter
 
@@ -46,7 +46,7 @@ python firmware/apply.py
 pio run -d firmware/upstream -e lilygo-t-embed-cc1101 -j 2
 ```
 
-Die erzeugte `firmware.bin` ist nur das App-Image bei **0x10000**. Sie ist kein zusammengeführtes Vollimage. Die bereitgestellte Datei `bruce-control-t-embed-cc1101-plus-merged.bin` enthält Bootloader bei 0x0, Partitionstabelle bei 0x8000 und App bei 0x10000. Prüfhash vor dem Schreiben mit `SHA256SUMS` vergleichen. Keine Datei flashen, falls der dokumentierte Build fehlgeschlagen ist oder das genaue Modell nicht passt.
+Die erzeugte `firmware.bin` ist nur das App-Image bei **0x10000**. Sie ist kein zusammengeführtes Vollimage. Die bereitgestellte Datei `bruce-control-test2-merged.bin` enthält Bootloader bei 0x0, Partitionstabelle bei 0x8000 und App bei 0x10000. Prüfhash vor dem Schreiben mit `SHA256SUMS` vergleichen. Keine Datei flashen, falls der dokumentierte Build fehlgeschlagen ist oder das genaue Modell nicht passt.
 
 ## Geprüfte Image-Eigenschaften
 
@@ -57,8 +57,8 @@ App-Image 4.315.024 Bytes, zusammengeführtes Image 4.380.560 Bytes. ESP32-S3 Ch
 Mit vollständig gesichertem Gerät und geprüftem zusammengeführtem Image:
 
 ```sh
-esptool --chip esp32s3 --port PORT --baud 460800 write-flash 0x0 bruce-control-t-embed-cc1101-plus-merged.bin
-esptool --chip esp32s3 --port PORT verify-flash 0x0 bruce-control-t-embed-cc1101-plus-merged.bin
+esptool --chip esp32s3 --port PORT --baud 460800 write-flash 0x0 bruce-control-test2-merged.bin
+esptool --chip esp32s3 --port PORT verify-flash 0x0 bruce-control-test2-merged.bin
 ```
 
 Kein `erase-flash` nötig. Der Bereich NVS bei 0x9000 kann beim Schreiben eines zusammengeführten Images betroffen sein; vom Erhalt alter Einstellungen nicht ausgehen. Backup bleibt erforderlich. Nach Abschluss neu starten und Modell-/Display-/SD-Funktion zuerst lokal prüfen. Danach [Hotspot und Kopplung](HOTSPOT_SETUP.md).

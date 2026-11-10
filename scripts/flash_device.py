@@ -13,13 +13,13 @@ import time
 import urllib.request
 import uuid
 
-FIRMWARE_NAME = "bruce-control-t-embed-cc1101-plus-merged.bin"
+FIRMWARE_NAME = "bruce-control-test2-merged.bin"
 FIRMWARE_URL = (
     "https://github.com/paiblo/bruce-control/releases/download/"
-    "v0.1.0-test.1/" + FIRMWARE_NAME
+    "v0.1.0-test.2/" + FIRMWARE_NAME
 )
-FIRMWARE_SHA256 = "f292173b33babbb1f3dbc3d976c307e6268a307c265d3e345ae6213fcb13c96a"
-FIRMWARE_BYTES = 4380560
+FIRMWARE_SHA256 = "154a65cf5d97afebbc2b0be7e02f9d394e14f816e336b422356689f3f9a25a23"
+FIRMWARE_BYTES = 4379712
 FLASH_BYTES = 16 * 1024 * 1024
 
 
