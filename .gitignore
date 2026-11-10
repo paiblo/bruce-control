@@ -9,3 +9,9 @@ firmware/upstream/
 playwright-report/
 test-results/
 *.log
+
+# Private local flash backups must never be committed.
+work/
+**/PRIVATE-backup-*
+**/*.partial
+**/__pycache__/

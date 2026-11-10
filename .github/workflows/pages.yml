@@ -24,6 +24,7 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: python3 -m unittest discover -s tests -p test_flash_device.py
       - run: npm run test:relay
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
