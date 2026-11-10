@@ -1,0 +1,28 @@
+name: Publish verified firmware release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: release-assets
+          path: work/release-assets
+      - name: Check prepared image hashes
+        working-directory: work/release-assets
+        run: sha256sum -c SHA256SUMS
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create v0.1.0-test.1
+          --repo "$GITHUB_REPOSITORY"
+          --target "$GITHUB_SHA"
+          --prerelease
+          --title 'Bruce Control 0.1.0 – erste Testversion'
+          --notes-file docs/RELEASE_NOTES.md
+          work/release-assets/*
