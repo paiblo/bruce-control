@@ -42,14 +42,3 @@ s=s.replace('"pio pkg exec -p toolchain-xtensa-%s -- xtensa-%s-elf-objcopy  --we
 # Never rename the original archive after a failed external tool invocation.
 s=s.replace('    if isfile("%s.old" % (original_file)):', '    if not isfile(patched_file):\n        raise RuntimeError("Upstream WiFi archive patch failed; original preserved")\n\n    if isfile("%s.old" % (original_file)):')
 p.write_text(s)
-
-# Remove upstream credential-extraction and reverse-shell demonstration payloads.
-# These functions are not required for Bruce Control or the user's device-control use case.
-import re
-p=checkout/'src/modules/ble/BLE_Suite.cpp';s=p.read_text()
-s=s.replace('    scripts[scriptCount++] = "Example: WiFi Credentials";\n','')
-s=s.replace('    scripts[scriptCount++] = "Example: Reverse Shell";\n','')
-s=re.sub(r'\} else if \(scriptName == "WiFi Credentials"\) \{.*?\} else if \(scriptName == "Rickroll"\) \{', '} else if (scriptName == "Rickroll") {',s,flags=re.S)
-if 'TCPClient' in s or 'key=clear' in s:
-    raise SystemExit('Unwanted BLE demonstration payload remains; stop build for review')
-p.write_text(s)

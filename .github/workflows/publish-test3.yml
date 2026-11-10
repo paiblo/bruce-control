@@ -1,0 +1,31 @@
+name: Publish firmware test 3
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: release-assets-test3
+          path: work/release-assets
+      - name: Check PowerShell syntax and binary hash
+        shell: pwsh
+        run: |
+          $Tokens = $null
+          $Problems = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\scripts\resume-flash-test3.ps1", [ref]$Tokens, [ref]$Problems)
+          if ($Problems.Count) { throw ($Problems | Out-String) }
+          $Entry = (Get-Content work/release-assets/SHA256SUMS -Raw).Trim() -split '\s+'
+          if ((Get-FileHash "work/release-assets/$($Entry[1])" -Algorithm SHA256).Hash -ne $Entry[0]) { throw 'Firmware hash mismatch' }
+      - name: Publish prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $Files = @('BUILD_MANIFEST.json', 'SHA256SUMS', 'bruce-control-test3-app.bin', 'bruce-control-test3-merged.bin', 'stack-budget.json', 'firmware-build.log', 'firmware-test3-source.tar.gz') | ForEach-Object { Join-Path 'work/release-assets' $_ }
+          gh release create v0.1.0-test.3 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --prerelease --title 'Bruce Control test 3 - stack fix with full upstream functions' --notes-file docs/RELEASE_TEST3.md @Files
+          if ($LASTEXITCODE -ne 0) { throw 'Release failed' }

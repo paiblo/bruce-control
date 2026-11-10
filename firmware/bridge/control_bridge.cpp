@@ -16,6 +16,8 @@
 #include <WebSocketsClient.h>
 #include <mbedtls/base64.h>
 #include <time.h>
+#include <memory>
+#include <esp_heap_caps.h>
 #ifndef BRIDGE_HOST
 #define BRIDGE_HOST "bruce-control-relay.paiblo-besser.workers.dev"
 #endif
@@ -31,6 +33,14 @@ uint32_t lastPong=0;
 struct Out {String *text; uint8_t *binary; size_t size;};
 struct Fix {double lat=0,lon=0,accuracy=0,hdop=0;int satellites=-1;uint32_t at=0;double timestamp=0;} phone,gnss;
 String seen[64];uint8_t seenIndex=0;
+// Large transfer buffers must not live on the 8-KiB CLI task stack.
+struct FreeBuffer {void operator()(uint8_t *p)const{free(p);}};
+using Buffer=std::unique_ptr<uint8_t,FreeBuffer>;
+Buffer transferBuffer(size_t n){
+ auto p=(uint8_t*)heap_caps_malloc(n,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+ if(!p)p=(uint8_t*)malloc(n);
+ return Buffer(p);
+}
 String hexRandom(size_t n){String r;for(size_t i=0;i<n;i++){char b[3];snprintf(b,3,"%02x",(unsigned)esp_random()&255);r+=b;}return r;}
 void enqueue(const String &s){Out out{new String(s),nullptr,0};if(xQueueSend(outgoing,&out,0)!=pdTRUE)delete out.text;}
 void sendJson(JsonDocument &d){String s;serializeJson(d,s);enqueue(s);}
@@ -98,13 +108,13 @@ void execute(JsonDocument &c){
    File dir=fs.open(path);if(!dir||!dir.isDirectory()){err("Verzeichnis nicht gefunden");return;}auto entries=data["entries"].to<JsonArray>();int count=0;
    File f=dir.openNextFile();while(f&&count<200){String fp=f.path();if(safePath(fp)){auto e=entries.add<JsonObject>();e["name"]=f.name();e["path"]=fp;e["directory"]=f.isDirectory();e["size"]=f.size();count++;}f.close();f=dir.openNextFile();}data["truncated"]=count==200;dir.close();
   }else if(method=="fs.read"){
-   int len=p["length"]|3072;uint32_t offset=p["offset"]|0;if(len<1||len>3072){err("Block zu groß");return;}File f=fs.open(path);if(!f||f.isDirectory()||offset>f.size()){err("Datei nicht lesbar");return;}f.seek(offset);uint8_t b[3072];int n=f.read(b,len);char out[4097];size_t written=0;mbedtls_base64_encode((uint8_t*)out,sizeof(out),&written,b,n);out[written]=0;data["data"]=out;data["eof"]=f.position()>=f.size();data["total"]=f.size();f.close();
+   int len=p["length"]|3072;uint32_t offset=p["offset"]|0;if(len<1||len>3072){err("Block zu groß");return;}File f=fs.open(path);if(!f||f.isDirectory()||offset>f.size()){err("Datei nicht lesbar");return;}f.seek(offset);auto b=transferBuffer(3072);auto out=transferBuffer(4097);if(!b||!out){f.close();err("Nicht genug Dateispeicher");return;}int n=f.read(b.get(),len);size_t written=0;if(mbedtls_base64_encode(out.get(),4097,&written,b.get(),n)!=0){f.close();err("Base64-Kodierung fehlgeschlagen");return;}out.get()[written]=0;data["data"]=(const char*)out.get();data["eof"]=f.position()>=f.size();data["total"]=f.size();f.close();
   }else if(method=="fs.write"){
    uint32_t offset=p["offset"]|0;String encoded=p["data"]|"";if(encoded.length()>4096||offset>1048576){err("Upload zu groß");return;}
    String tmp=path+".bridge-upload";if(offset==0){if(fs.exists(path)){err("Zieldatei existiert bereits");return;}fs.mkdir("/BruceControl");fs.remove(tmp);}
    File f=fs.open(tmp,offset==0?FILE_WRITE:FILE_APPEND);if(!f||f.size()!=offset){if(f)f.close();err("Upload-Offset ungültig");return;}
-   uint8_t b[3072];size_t n=0;if(mbedtls_base64_decode(b,sizeof(b),&n,(const uint8_t*)encoded.c_str(),encoded.length())!=0){f.close();err("Base64 ungültig");return;}
-   size_t count=f.write(b,n);f.flush();f.close();if(count!=n){err("Speicher voll");return;}if(p["final"].as<bool>()&&!fs.rename(tmp,path)){err("Upload-Abschluss fehlgeschlagen");return;}data["written"]=count;
+   auto b=transferBuffer(3072);if(!b){f.close();err("Nicht genug Dateispeicher");return;}size_t n=0;if(mbedtls_base64_decode(b.get(),3072,&n,(const uint8_t*)encoded.c_str(),encoded.length())!=0){f.close();err("Base64 ungültig");return;}
+   size_t count=f.write(b.get(),n);f.flush();f.close();if(count!=n){err("Speicher voll");return;}if(p["final"].as<bool>()&&!fs.rename(tmp,path)){err("Upload-Abschluss fehlgeschlagen");return;}data["written"]=count;
   }else if(method=="fs.mkdir"){if(!fs.mkdir(path)){err("Verzeichnis nicht erstellt");return;}}
   else if(method=="fs.delete"){if(!fs.remove(path)){err("Datei nicht gelöscht; Verzeichnisse bleiben erhalten");return;}}
   else if(method=="fs.rename"){String to=p["target"]|"";if(!safePath(to,true)||fs.exists(to)||!fs.rename(path,to)){err("Umbenennen fehlgeschlagen");return;}}
