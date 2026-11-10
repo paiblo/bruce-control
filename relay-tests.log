@@ -1,0 +1,25 @@
+
+> bruce-control@0.1.0 test:relay
+> npm run build:relay && node tests/relay.mjs
+
+
+> bruce-control@0.1.0 build:relay
+> esbuild apps/relay/src/index.ts --bundle --format=esm --platform=neutral --external:cloudflare:workers --outfile=apps/relay/dist/worker.js
+
+
+  apps/relay/dist/worker.js  134.5kb
+
+⚡ Done in 11ms
+PASS enrollment ownership
+PASS origin enforcement
+PASS invalid device token rejected
+PASS pair requires physical approval
+PASS pending pair cannot control
+PASS approval activates browser token
+PASS authenticated command routing and ack
+PASS device results routed to paired browser
+PASS replay blocked
+PASS expired command rejected
+PASS device room isolation
+PASS device revocation closes browser
+12 relay runtime checks passed

@@ -1,0 +1,19 @@
+
+Running 10 tests using 1 worker
+
+(node:15630) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium-mobile] › tests/browser/app.spec.ts:3:1 › all eight sections work on mobile without horizontal overflow or fabricated data (1.5s)
+  ✓   2 [chromium-mobile] › tests/browser/app.spec.ts:39:1 › IndexedDB import, favorites, preview and persistence (1.2s)
+  ✓   3 [chromium-mobile] › tests/browser/app.spec.ts:61:1 › GPS permission, track recording, pause and GPX download with explicit test position (3.7s)
+  ✓   4 [chromium-mobile] › tests/browser/app.spec.ts:104:1 › offline shell restores an unvisited hash route (873ms)
+  ✓   5 [chromium-mobile] › tests/browser/app.spec.ts:125:1 › mobile menu and pairing validation (2.2s)
+(node:15963) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [webkit-mobile] › tests/browser/app.spec.ts:3:1 › all eight sections work on mobile without horizontal overflow or fabricated data (1.5s)
+  ✓   7 [webkit-mobile] › tests/browser/app.spec.ts:39:1 › IndexedDB import, favorites, preview and persistence (1.3s)
+  ✓   8 [webkit-mobile] › tests/browser/app.spec.ts:61:1 › GPS permission, track recording, pause and GPX download with explicit test position (4.2s)
+  ✓   9 [webkit-mobile] › tests/browser/app.spec.ts:104:1 › offline shell restores an unvisited hash route (727ms)
+  ✓  10 [webkit-mobile] › tests/browser/app.spec.ts:125:1 › mobile menu and pairing validation (1.5s)
+
+  10 passed (20.1s)
