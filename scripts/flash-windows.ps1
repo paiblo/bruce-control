@@ -28,9 +28,9 @@ try {
   & $VenvPython -m pip --disable-pip-version-check install 'esptool==5.3.0'
   if ($LASTEXITCODE -ne 0) { throw 'esptool konnte nicht installiert werden.' }
   $InstallerPath = Join-Path $WorkDir 'flash_device.py'
-  $InstallerUrl = 'https://raw.githubusercontent.com/paiblo/bruce-control/e0eac333b87bc3cb3f470563b655f94624c03807/scripts/flash_device.py'
+  $InstallerUrl = 'https://raw.githubusercontent.com/paiblo/bruce-control/97e4690322c465a8e35300265de2947afc362407/scripts/flash_device.py'
   Invoke-WebRequest -UseBasicParsing -Uri $InstallerUrl -OutFile $InstallerPath
-  $ExpectedHash = '8ec0a36bdb59bbec4005ab9ecdbc202d418c9ad324215c4340bd6866bff03751'
+  $ExpectedHash = 'f0b3784b0701ed90eb05071ba0c868c9e3e6599c23f6012caf42fa72decdf1d4'
   if ((Get-FileHash -Algorithm SHA256 $InstallerPath).Hash.ToLowerInvariant() -ne $ExpectedHash) {
     throw 'Pruefsumme des Flash-Starters stimmt nicht. Abbruch.'
   }
