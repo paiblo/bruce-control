@@ -26,5 +26,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create v0.1.0-test.2 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --prerelease --title 'Bruce Control test 2 - removed unwanted demonstration payloads' --notes-file docs/RELEASE_TEST2.md work/release-assets/*
+          $Files = @('BUILD_MANIFEST.json', 'SHA256SUMS', 'bruce-control-test2-merged.bin', 'firmware-build.log', 'firmware-test2-source.tar.gz') | ForEach-Object { Join-Path 'work/release-assets' $_ }
+          gh release create v0.1.0-test.2 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --prerelease --title 'Bruce Control test 2 - removed unwanted demonstration payloads' --notes-file docs/RELEASE_TEST2.md @Files
           if ($LASTEXITCODE -ne 0) { throw 'Release failed' }
