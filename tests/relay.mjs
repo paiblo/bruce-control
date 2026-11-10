@@ -28,11 +28,23 @@ const http = async (
     headers: { "Content-Type": "application/json", Origin: origin },
     body: JSON.stringify(body),
   });
-const connect = async (role, auth, dev = device) => {
+const connect = async (
+  role,
+  auth,
+  dev = device,
+  arduino = role === "device",
+) => {
   const r = await mf.dispatchFetch(`http://local/v1/devices/${dev}/ws`, {
-    headers: { Upgrade: "websocket" },
+    headers: {
+      Upgrade: "websocket",
+      ...(arduino
+        ? { Origin: "file://", "Sec-WebSocket-Protocol": "bruce.v1" }
+        : {}),
+    },
   });
   assert.equal(r.status, 101);
+  if (arduino)
+    assert.equal(r.headers.get("Sec-WebSocket-Protocol"), "bruce.v1");
   r.webSocket.accept();
   const messages = [];
   r.webSocket.addEventListener("message", (e) => {
@@ -69,6 +81,19 @@ try {
     403,
   );
   check("origin enforcement");
+  assert.equal(
+    (await http("enroll", { token }, device, "file://")).status,
+    403,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(`http://local/v1/devices/${device}/ws`, {
+        headers: { Upgrade: "websocket", Origin: "file://" },
+      })
+    ).status,
+    403,
+  );
+  check("Arduino exception is restricted to versioned WebSocket upgrades");
   const unauth = await connect("device", randomBytes(32).toString("hex"));
   let closed = false;
   unauth.ws.addEventListener("close", () => (closed = true));
@@ -99,6 +124,11 @@ try {
     true,
   );
   check("approval activates browser token");
+  const spoof = await connect("browser", pair.token, device, true);
+  let spoofClosed = false;
+  spoof.ws.addEventListener("close", () => (spoofClosed = true));
+  await wait(() => spoofClosed);
+  check("Arduino Origin cannot authenticate as browser");
   const b = await connect("browser", pair.token);
   await wait(() => b.messages.some((m) => m.type === "ready"));
   const nonce = b.messages.find((m) => m.type === "ready").nonce;

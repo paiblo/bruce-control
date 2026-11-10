@@ -17,6 +17,7 @@ interface Env {
 }
 type Attachment = {
   role: "pending" | "device" | "browser";
+  deviceOnly?: boolean;
   nonce: string;
   seq: number;
   deadline: number;
@@ -45,7 +46,14 @@ export default {
     const url = new URL(req.url),
       origin = req.headers.get("Origin");
     const allowed = env.ALLOWED_ORIGINS.split(",");
-    if (origin && !allowed.includes(origin))
+    // Arduino WebSockets sends this non-browser Origin by default. Keep the
+    // exception limited to its versioned WS endpoint and device-token auth.
+    const arduinoSocket =
+      origin === "file://" &&
+      req.headers.get("Upgrade")?.toLowerCase() === "websocket" &&
+      req.headers.get("Sec-WebSocket-Protocol") === "bruce.v1" &&
+      /^\/v1\/devices\/[a-f0-9]{32}\/ws$/.test(url.pathname);
+    if (origin && !allowed.includes(origin) && !arduinoSocket)
       return json({ error: "Origin nicht freigegeben" }, 403);
     const cors: Record<string, string> = origin
       ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" }
@@ -178,13 +186,14 @@ export class Room extends DurableObject<Env> {
     }
     return respond({ error: "Unbekannt" }, 404);
   }
-  async fetch(_request: Request): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     if (this.ctx.getWebSockets().length >= 5)
       return json({ error: "Zu viele Verbindungen" }, 429);
     const pair = new WebSocketPair();
     this.ctx.acceptWebSocket(pair[1], ["pending"]);
     pair[1].serializeAttachment({
       role: "pending",
+      deviceOnly: request.headers.get("Origin") === "file://",
       nonce: crypto.randomUUID(),
       seq: 0,
       deadline: Date.now() + 10000,
@@ -192,7 +201,10 @@ export class Room extends DurableObject<Env> {
       window: Date.now(),
     } satisfies Attachment);
     await this.schedule(Date.now() + 10000);
-    return new Response(null, { status: 101, webSocket: pair[0] });
+    const headers: Record<string, string> = {};
+    if (request.headers.get("Sec-WebSocket-Protocol") === "bruce.v1")
+      headers["Sec-WebSocket-Protocol"] = "bruce.v1";
+    return new Response(null, { status: 101, headers, webSocket: pair[0] });
   }
   sockets(role: "device" | "browser") {
     return this.ctx
@@ -241,6 +253,7 @@ export class Room extends DurableObject<Env> {
     }
     if (a.role === "pending") {
       if (
+        (a.deviceOnly && m.role !== "device") ||
         m.type !== "auth" ||
         m.v !== 1 ||
         !["browser", "device"].includes(String(m.role)) ||

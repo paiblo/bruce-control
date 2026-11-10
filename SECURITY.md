@@ -13,3 +13,5 @@
 - Browserbibliothek/Tracks lokal. OSM-Kacheln nur nach Einwilligung. Kein automatischer Upload von Tracks, Standort nur aktiv alle 5 s.
 
 Grenzen: keine unabhängige Sicherheitsprüfung, kein physischer Hardwaretest, keine verschlüsselte NVS-Konfiguration oder signierte Secure-Boot-Kette durch diese Erweiterung. Firmware ist ein Testbuild auf gepinntem Upstream. Sicherheitsfehler zunächst privat im eigenen Repository behandeln; keine Tokens an Issues anhängen.
+
+Arduino-WebSocket-Kompatibilitaet: Die native ESP32-Bibliothek sendet Origin file://. Ausschliesslich ein Upgrade an den geraetespezifischen /ws-Pfad mit Subprotokoll bruce.v1 wird damit akzeptiert; dieser Socket kann sich nur mit Rolle device und gueltigem Geraetetoken anmelden. HTTP-Pairing und Browserauthentifizierung erlauben diese Origin nicht. Regressionstests pruefen beide Sperren.

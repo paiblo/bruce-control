@@ -30,7 +30,12 @@ const wait = async (fn) => {
 const connect = (role, token) => {
   const ws = new WebSocket(
     `${base.replace("https", "wss")}/v1/devices/${device}/ws`,
-    { dispatcher },
+    {
+      dispatcher,
+      ...(role === "device"
+        ? { protocols: ["bruce.v1"], headers: { Origin: "file://" } }
+        : {}),
+    },
   );
   const messages = [];
   ws.addEventListener("open", () =>
