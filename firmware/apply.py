@@ -34,3 +34,11 @@ print('Bridge applied to',checkout)
 
 # Upstream IR receive handler leaked its allocated reader on timeout.
 patch(Path("src/core/serial_commands/ir_commands.cpp"),"    if (r.length() == 0) return false;","    if (r.length() == 0) { delete i; return false; }")
+
+# pioarduino 55 uses the unified Xtensa package; upstream patch.py names an obsolete package.
+p=checkout/'patch.py';s=p.read_text()
+s=s.replace('"pio pkg exec -p toolchain-xtensa-%s -- xtensa-%s-elf-objcopy  --weaken-symbol=ieee80211_raw_frame_sanity_check %s %s"\n            % (mcu, mcu, original_file, patched_file)',
+            '\'"%s" --weaken-symbol=ieee80211_raw_frame_sanity_check "%s" "%s"\'\n            % (join(env.PioPlatform().get_package_dir("toolchain-xtensa-esp-elf"), "bin", "xtensa-%s-elf-objcopy" % mcu), original_file, patched_file)')
+# Never rename the original archive after a failed external tool invocation.
+s=s.replace('    if isfile("%s.old" % (original_file)):', '    if not isfile(patched_file):\n        raise RuntimeError("Upstream WiFi archive patch failed; original preserved")\n\n    if isfile("%s.old" % (original_file)):')
+p.write_text(s)

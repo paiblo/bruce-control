@@ -11,7 +11,7 @@
 9. Dateioperationen und Bildschirmlogger verwenden dieselben Upstream-Treiber wie Bruce. Gleichzeitiger lokaler Zugriff auf identische Dateien während Upload/Umbenennen vermeiden. Für diese Testversion keine globale transaktionsfähige Dateisystemsperre.
 10. Ein Browser-Token pro Gerät, 30 Tage gültig. Keine Konten, Mehrbenutzerfreigaben, Token-Rotation im Hintergrund oder Ende-zu-Ende-Verschlüsselung gegenüber Cloudflare. Gerätetoken in unverschlüsselter NVS des Testbuilds.
 11. Karten benötigen opt-in Internetzugang zu OpenStreetMap. Kein Offline-Kachelpaket, kein Bulk-Download. OSM-Bedingungen und Attribution bleiben erhalten. Karte ist eine Leaflet-Implementierung.
-12. Bibliotheksbackup exportiert Datensätze; Wiederherstellung und Formatvalidierung werden separat dokumentiert. Keine automatische Cloud-Synchronisation.
+12. Bibliotheksbackup exportiert Datensätze; Wiederherstellung prüft das Format und ersetzt bestätigte Einträge mit derselben ID. Keine automatische Cloud-Synchronisation.
 13. Offline-Oberfläche setzt einen vollständigen ersten Besuch und erfolgreichen Service-Worker-Install voraus. Browserprivatmodus, Speicherbereinigung und iOS-PWA-Einschränkungen können lokale Daten löschen.
 14. Free-Tier-Limits können Verbindungen unterbrechen. Kein kostenpflichtiges Upgrade eingerichtet. Kosten eines bereits vorhandenen Paid-Accounts richten sich nach dessen Vertrag; keine Kostengarantie.
 15. Rohbefehls- und Binärdaten-Tests verwenden klar erkennbare Testfixtures. Sie belegen Protokollverhalten, keine Gerätefähigkeiten. Linux-WebKit ist kein iPhone und kein Nachweis einer konkreten Safari-Version auf iOS 27.0.
