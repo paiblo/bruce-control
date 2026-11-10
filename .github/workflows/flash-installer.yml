@@ -1,0 +1,40 @@
+name: Verify Windows flash starter
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/flash-windows.ps1
+      - scripts/flash_device.py
+      - tests/test_flash_device.py
+      - .github/workflows/flash-installer.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $Tokens = $null
+          $Problems = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\scripts\flash-windows.ps1", [ref]$Tokens, [ref]$Problems)
+          if ($Problems.Count) { throw ($Problems | Out-String) }
+      - name: Test flash safety ordering with explicit fixtures
+        run: python -m unittest discover -s tests -p test_flash_device.py -v
+      - name: Exercise Windows bootstrap without any USB hardware
+        shell: pwsh
+        run: |
+          $WorkDir = Join-Path $env:RUNNER_TEMP 'BruceControl-test'
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/flash-windows.ps1 -Port COM_NO_SUCH_DEVICE -WorkDir $WorkDir
+          if ($LASTEXITCODE -ne 1) { throw 'Expected a safe stop for the missing USB device.' }
+          $Image = Join-Path $WorkDir 'bruce-control-t-embed-cc1101-plus-merged.bin'
+          if ((Get-FileHash $Image -Algorithm SHA256).Hash.ToLowerInvariant() -ne 'f292173b33babbb1f3dbc3d976c307e6268a307c265d3e345ae6213fcb13c96a') { throw 'Image hash mismatch' }
+          if (Get-ChildItem $WorkDir -Filter 'PRIVATE-backup-*') { throw 'Unexpected hardware backup in a hardware-free test' }
+          Write-Output 'PASS: Windows startup, venv, esptool, pinned script and image checks; missing USB safely rejected.'
+          exit 0

@@ -4,6 +4,14 @@ Die Bridge ist für Bruce-Boardprofil `lilygo-t-embed-cc1101` gebaut. Upstream v
 
 Download: [Release v0.1.0-test.1](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.1). Für den normalen Test das **merged**-Image verwenden; die Datei mit „app-0x10000“ ist nur für bewusstes Einzel-App-Flashen.
 
+## Windows-Starter
+
+Der lokale Starter `scripts/flash-windows.ps1` richtet esptool in einer eigenen Python-Umgebung unter `%LOCALAPPDATA%\BruceControl\Flash` ein. Voraussetzung ist Python 3.10 oder neuer. Er laedt den fest gepinnten Python-Installer, prueft dessen SHA256 sowie die Firmware und waehlt den lokalen COM-Anschluss. Bei mehreren Anschluessen muss der LILYGO-Port ausgewaehlt werden.
+
+Danach folgen ESP32-S3-/16-MB-/Sicherheitspruefung, vollstaendiges lokales Flash-Backup, Schreiben, Vergleich und Neustart. Das private Backup wird niemals hochgeladen. Die SD-Karte muss separat gesichert werden. Ein falscher Chip, unbekannte Flashgroesse, aktive Verschluesselung oder ein unvollstaendiges Backup brechen den Ablauf vor dem Schreiben ab.
+
+Diese Cloud-Sitzung hat keinen Zugriff auf die USB-Anschluesse deines Windows-PCs. Der Starter muss dort ausgefuehrt werden. Ein `-ExecutionPolicy Bypass` im Startkommando gilt nur fuer diesen PowerShell-Prozess; eine dauerhafte Aenderung der Windows-Einstellungen oder Administratorrechte sind nicht vorgesehen.
+
 ## Werkzeuge
 
 USB-Datenkabel, Mac/Windows/Linux-Rechner und Python 3.12. Safari auf dem iPhone bietet keinen verlässlichen Web-Serial-Flasher; der erste Flashvorgang erfolgt am Rechner. Kein kostenpflichtiger Dienst erforderlich.
