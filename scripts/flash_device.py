@@ -79,7 +79,7 @@ def choose_port(requested: str | None) -> str:
 
 def run_esptool(port: str, command: list[str], *, final_reset: bool = False) -> str:
     args = [sys.executable, "-m", "esptool", "--chip", "esp32s3", "--port", port,
-            "--baud", "460800", "--after", "hard-reset" if final_reset else "no-reset"] + command
+            "--baud", "115200", "--after", "hard-reset" if final_reset else "no-reset-stub"] + command
     # Capture for validation but display progress; no hardware identifiers are uploaded.
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True, encoding="utf-8", errors="replace")
