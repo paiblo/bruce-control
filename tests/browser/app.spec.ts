@@ -1,16 +1,140 @@
-import {test,expect} from '@playwright/test';
-test('all eight sections work on mobile without horizontal overflow or fabricated data',async({page})=>{
- const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('./');await expect(page.getByRole('heading',{name:'Dein Bruce. Deine Kontrolle.'})).toBeVisible();await expect(page.getByText('Kein Gerät verbunden',{exact:true})).toBeVisible();
- for(const id of ['remote','modules','gps','library','files','terminal','settings','home']){await page.goto('./#'+id);await expect(page.locator('h1')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);if(id==='remote')await expect(page.getByRole('button',{name:'Bestätigen',exact:true})).toBeDisabled();}
- expect(errors).toEqual([]);
+import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+test("all eight sections work on mobile without horizontal overflow or fabricated data", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("./");
+  await expect(
+    page.getByRole("heading", { name: "Dein Bruce. Deine Kontrolle." }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Kein Gerät verbunden", { exact: true }),
+  ).toBeVisible();
+  for (const id of [
+    "remote",
+    "modules",
+    "gps",
+    "library",
+    "files",
+    "terminal",
+    "settings",
+    "home",
+  ]) {
+    await page.goto("./#" + id);
+    await expect(page.locator("h1")).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    if (id === "remote")
+      await expect(
+        page.getByRole("button", { name: "Bestätigen", exact: true }),
+      ).toBeDisabled();
+  }
+  expect(errors).toEqual([]);
 });
-test('IndexedDB import, favorites, preview and persistence',async({page})=>{
- await page.goto('./#library');await page.locator('input[type=file]').setInputFiles({name:'Wohnzimmer.ir',mimeType:'text/plain',buffer:Buffer.from('Filetype: IR signals file\nVersion: 1\nname: Power\ntype: parsed\nprotocol: NEC\naddress: 00 00 00 00\ncommand: 01 00 00 00\n')});await expect(page.getByText('Wohnzimmer.ir',{exact:true})).toBeVisible();await page.getByTitle('Favorit umschalten').click();await expect(page.getByTitle('Favorit umschalten').locator('svg')).toHaveAttribute('fill','currentColor');await page.reload();await page.getByRole('button',{name:'Favoriten',exact:true}).click();await expect(page.getByText('Wohnzimmer.ir',{exact:true})).toBeVisible();await page.getByRole('button',{name:/Wohnzimmer.ir/}).click();await expect(page.locator('textarea')).toContainText('protocol: NEC');
+test("IndexedDB import, favorites, preview and persistence", async ({
+  page,
+}) => {
+  await page.goto("./#library");
+  await page.locator("input[type=file]").setInputFiles({
+    name: "Wohnzimmer.ir",
+    mimeType: "text/plain",
+    buffer: Buffer.from(
+      "Filetype: IR signals file\nVersion: 1\nname: Power\ntype: parsed\nprotocol: NEC\naddress: 00 00 00 00\ncommand: 01 00 00 00\n",
+    ),
+  });
+  await expect(page.getByText("Wohnzimmer.ir", { exact: true })).toBeVisible();
+  await page.getByTitle("Favorit umschalten").click();
+  await expect(
+    page.getByTitle("Favorit umschalten").locator("svg"),
+  ).toHaveAttribute("fill", "currentColor");
+  await page.reload();
+  await page.getByRole("button", { name: "Favoriten", exact: true }).click();
+  await expect(page.getByText("Wohnzimmer.ir", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Wohnzimmer.ir/ }).click();
+  await expect(page.locator("textarea")).toContainText("protocol: NEC");
 });
-test('GPS permission, track recording, pause and GPX download with explicit test position',async({page,context})=>{
- await context.grantPermissions(['geolocation']);await context.setGeolocation({latitude:52.52,longitude:13.405,accuracy:5});await page.goto('./#gps');await page.getByRole('button',{name:'Standort freigeben',exact:true}).click();await expect(page.getByText('52.520000°',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Aufzeichnen',exact:true}).click();await context.setGeolocation({latitude:52.5201,longitude:13.4051,accuracy:5});await page.waitForTimeout(1500);await context.setGeolocation({latitude:52.5202,longitude:13.4052,accuracy:5});await page.waitForTimeout(1000);await page.getByRole('button',{name:'Pause',exact:true}).click();const downloaded=page.waitForEvent('download');await page.getByRole('button',{name:'GPX',exact:true}).click();expect((await downloaded).suggestedFilename()).toBe('Meine Route.gpx');await page.getByRole('button',{name:'Speichern',exact:true}).click();await page.goto('./#library');await expect(page.getByText('Meine Route',{exact:true})).toBeVisible();
+test("GPS permission, track recording, pause and GPX download with explicit test position", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({
+    latitude: 52.52,
+    longitude: 13.405,
+    accuracy: 5,
+  });
+  await page.goto("./#gps");
+  await page
+    .getByRole("button", { name: "Standort freigeben", exact: true })
+    .click();
+  await expect(page.getByText("52.520000°", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Aufzeichnen", exact: true }).click();
+  await context.setGeolocation({
+    latitude: 52.5201,
+    longitude: 13.4051,
+    accuracy: 5,
+  });
+  await page.waitForTimeout(1500);
+  await context.setGeolocation({
+    latitude: 52.5202,
+    longitude: 13.4052,
+    accuracy: 5,
+  });
+  await page.waitForTimeout(1000);
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "GPX", exact: true }).click();
+  const exported = await downloaded;
+  expect(exported.suggestedFilename()).toMatch(/^Meine[ _]Route\.gpx$/);
+  expect(await readFile((await exported.path())!, "utf8")).toContain(
+    "<trkpt lat=",
+  );
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(
+    page.getByText("Route in der Bibliothek gespeichert.", { exact: true }),
+  ).toBeVisible();
+  await page.goto("./#library");
+  await expect(page.getByText("Meine Route", { exact: true })).toBeVisible();
 });
-test('offline shell restores an unvisited hash route',async({page,context,browserName})=>{
- test.skip(browserName==='webkit','Playwright WebKit does not expose service-worker lifecycle reliably; Chromium offline coverage only.');await page.goto('./');await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.waitForFunction(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.goto('./#library');await expect(page.getByRole('heading',{name:'Bibliothek',exact:true})).toBeVisible();await expect(page.getByText('Offline · Deine Bibliothek und gespeicherte Tracks sind weiterhin verfügbar.')).toBeVisible();await context.setOffline(false);
+test("offline shell restores an unvisited hash route", async ({
+  page,
+  context,
+}) => {
+  await page.goto("./");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await context.setOffline(true);
+  await page.goto("./#library");
+  await expect(
+    page.getByRole("heading", { name: "Bibliothek", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Offline · Deine Bibliothek und gespeicherte Tracks sind weiterhin verfügbar.",
+    ),
+  ).toBeVisible();
+  await context.setOffline(false);
 });
-test('mobile menu and pairing validation',async({page})=>{await page.goto('./');await page.getByRole('button',{name:'Mehr',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Einstellungen'}).click();await page.getByRole('button',{name:'Sicher koppeln',exact:true}).click();await expect(page.getByText('32-stellige Geräte-ID und 8-stelligen Code eingeben.').first()).toBeVisible();});
+test("mobile menu and pairing validation", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Mehr", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Einstellungen" })
+    .click();
+  await page
+    .getByRole("button", { name: "Sicher koppeln", exact: true })
+    .click();
+  await expect(
+    page
+      .getByText("32-stellige Geräte-ID und 8-stelligen Code eingeben.")
+      .first(),
+  ).toBeVisible();
+});

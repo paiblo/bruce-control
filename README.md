@@ -19,6 +19,10 @@ npm run dev
 
 Die Entwicklungsadresse ist http://localhost:5173/bruce-control/. Produktionsbuild: `npm run build`, Ergebnis `apps/web/dist`. Hash-Routing, Manifest und Offline-Cache sind auf `/bruce-control/` abgestimmt.
 
+## Downloads
+
+[Erste Testversion mit Firmware und SHA256-Prüfsummen](https://github.com/paiblo/bruce-control/releases/tag/v0.1.0-test.1). Erst Backup erstellen und [Flashanleitung](FIRMWARE_FLASHING.md) lesen.
+
 ## Firmware
 
 ```sh

@@ -15,3 +15,5 @@
 13. Offline-Oberfläche setzt einen vollständigen ersten Besuch und erfolgreichen Service-Worker-Install voraus. Browserprivatmodus, Speicherbereinigung und iOS-PWA-Einschränkungen können lokale Daten löschen.
 14. Free-Tier-Limits können Verbindungen unterbrechen. Kein kostenpflichtiges Upgrade eingerichtet. Kosten eines bereits vorhandenen Paid-Accounts richten sich nach dessen Vertrag; keine Kostengarantie.
 15. Rohbefehls- und Binärdaten-Tests verwenden klar erkennbare Testfixtures. Sie belegen Protokollverhalten, keine Gerätefähigkeiten. Linux-WebKit ist kein iPhone und kein Nachweis einer konkreten Safari-Version auf iOS 27.0.
+
+16. Der Firmware-Build behält Warnungen aus Upstream-Bibliotheken, unter anderem ODR-Hinweise in BLE-Code und mögliche Bounds-Probleme im Helix-AAC-Decoder. Diese wurden nicht als durch Hardwaretests entkräftet dargestellt. Audio ist über die Bridge nicht freigegeben. Der Build ist ein Testbuild, kein unabhängiges Sicherheitsaudit der gesamten Bruce-Firmware.

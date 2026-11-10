@@ -1,36 +1,1393 @@
-import {useEffect,useState} from 'react';
-import {Folder,FileText,Upload,Download,Trash2,ArrowLeft,RefreshCw,Save,Star,Search,Plus,Terminal as TerminalIcon,Power,Radio,Wifi,Lightbulb,AudioLines,Nfc,Code2,ScanLine,ChevronRight,Monitor,Settings2,Move,Copy} from 'lucide-react';
-import {connection,readFile,writeFile,api,DEFAULT_RELAY,type Pair} from './connection';
-import {items,saveItem,removeItem,setting,clearPair,restoreBackup,type Item} from './db';
-import {download,exportTrack,type Point} from './gps';
-import {type Method} from '../../../packages/protocol/src';
-import {Button,Card,Notice,Section} from './ui';
-type Props={notify:(s:string)=>void};
-export function Files({notify}:Props){
- const [drive,setDrive]=useState('SD'),[path,setPath]=useState('/'),[entries,setEntries]=useState<{name:string;path:string;directory:boolean;size:number}[]>([]),[busy,setBusy]=useState(false),[progress,setProgress]=useState(0),[text,setText]=useState<string>(),[selected,setSelected]=useState('');
- const load=async()=>{setBusy(true);setEntries([]);try{const r=await connection.command('fs.list',{drive,path});setEntries(r.entries as typeof entries);if(r.truncated)notify('Anzeige auf 200 Einträge begrenzt.');}catch(e){notify((e as Error).message);}finally{setBusy(false);}};
- useEffect(()=>{if(connection.can('fs.list'))void load();},[drive,path]);
- async function action(fn:()=>Promise<void>){setBusy(true);setProgress(0);try{await fn();}catch(e){notify((e as Error).message);}finally{setBusy(false);}}
- async function open(p:string){await action(async()=>{const b=await readFile(drive,p,setProgress);if(b.size>262144)throw new Error('Texteditor maximal 256 KiB. Bitte herunterladen.');setText(await b.text());setSelected(p);});}
- return <><Section eyebrow="SD & LITTLEFS" title="Dateien" right={<Button quiet onClick={()=>void load()} disabled={busy||!connection.can('fs.list')}><RefreshCw size={17}/></Button>}/><div className="segmented">{['SD','LittleFS'].map(d=><button key={d} className={drive===d?'active':''} onClick={()=>{setDrive(d);setPath('/');}}>{d==='SD'?'SD-Karte':'Interner Speicher'}</button>)}</div><Notice>Uploads, Umbenennen und Löschen sind auf /BruceControl/ beschränkt. Konfigurationsdateien und Zugangsdaten sind geschützt.</Notice><Card><div className="file-toolbar"><Button quiet title="Übergeordnetes Verzeichnis" onClick={()=>setPath(p=>p==='/'?'/':p.slice(0,p.lastIndexOf('/'))||'/')}><ArrowLeft size={16}/></Button><span className="mono path">{path}</span><Button quiet disabled={busy||!connection.can('fs.mkdir')} onClick={()=>{const name=prompt('Ordnername in /BruceControl/');if(name)void action(async()=>{await connection.command('fs.mkdir',{drive,path:'/BruceControl/'+name});await load();});}}><Plus size={16}/></Button><label className={'button quiet '+(!connection.can('fs.write')?'disabled':'')}><Upload size={16}/><span>Upload</span><input hidden type="file" disabled={busy||!connection.can('fs.write')} onChange={e=>{const f=e.target.files?.[0];if(f)void action(async()=>{await writeFile(drive,'/BruceControl/'+f.name,f,setProgress);setPath('/BruceControl');await load();notify('Datei hochgeladen.');});e.target.value='';}}/></label></div>{busy&&<progress value={progress} max={100}/>}<div className="file-list">{entries.map(f=><div className="file-row" key={f.path}><button className="file-name" onClick={()=>f.directory?setPath(f.path):void open(f.path)}>{f.directory?<Folder size={20}/>:<FileText size={20}/>}<span><b>{f.name}</b><small>{f.directory?'Verzeichnis':f.size+' Bytes'}</small></span></button>{!f.directory&&<Button quiet title="Herunterladen" disabled={busy} onClick={()=>void action(async()=>{const b=await readFile(drive,f.path,setProgress);download(f.name,b);})}><Download size={17}/></Button>}{!f.directory&&f.path.startsWith('/BruceControl/')&&<><Button quiet title="Umbenennen" disabled={busy} onClick={()=>{const name=prompt('Neuer Dateiname',f.name);if(name)void action(async()=>{await connection.command('fs.rename',{drive,path:f.path,target:f.path.slice(0,f.path.lastIndexOf('/')+1)+name});await load();});}}><Settings2 size={16}/></Button><Button quiet title="Löschen" disabled={busy} onClick={()=>{if(confirm(f.name+' dauerhaft vom Gerät löschen?'))void action(async()=>{await connection.command('fs.delete',{drive,path:f.path});await load();});}}><Trash2 size={17}/></Button></>}</div>)}{!entries.length&&!busy&&<div className="empty"><Folder size={36}/><h3>{connection.deviceOnline?'Keine Dateien geladen':'Gerät verbinden'}</h3><p>{connection.deviceOnline?'Verzeichnis auswählen oder aktualisieren.':'Dateien erscheinen nach einer authentifizierten Verbindung.'}</p></div>}</div></Card>{text!==undefined&&<Card><h3><FileText size={18}/> {selected}</h3><textarea className="editor" value={text} onChange={e=>setText(e.target.value)} spellCheck={false}/><div className="row"><Button onClick={()=>{const name=prompt('Als neue Datei speichern (bestehende Dateien werden nicht überschrieben)',selected.split('/').at(-1)+'.edited');if(name)void action(async()=>{await writeFile(drive,'/BruceControl/'+name,new Blob([text]),setProgress);notify('Neue Datei gespeichert.');});}} disabled={busy||!connection.can('fs.write')}><Save size={16}/> Als neue Datei</Button><Button quiet onClick={()=>download(selected.split('/').at(-1)||'datei.txt',text)}><Download size={16}/> Lokal</Button></div></Card>}</>;
+import { useEffect, useState } from "react";
+import {
+  Folder,
+  FileText,
+  Upload,
+  Download,
+  Trash2,
+  ArrowLeft,
+  RefreshCw,
+  Save,
+  Star,
+  Search,
+  Plus,
+  Terminal as TerminalIcon,
+  Power,
+  Radio,
+  Wifi,
+  Lightbulb,
+  AudioLines,
+  Nfc,
+  Code2,
+  ScanLine,
+  ChevronRight,
+  Monitor,
+  Settings2,
+  Move,
+  Copy,
+} from "lucide-react";
+import {
+  connection,
+  readFile,
+  writeFile,
+  api,
+  DEFAULT_RELAY,
+  type Pair,
+} from "./connection";
+import {
+  items,
+  saveItem,
+  removeItem,
+  setting,
+  clearPair,
+  restoreBackup,
+  type Item,
+} from "./db";
+import { download, exportTrack, type Point } from "./gps";
+import { type Method } from "../../../packages/protocol/src";
+import { Button, Card, Notice, Section } from "./ui";
+type Props = { notify: (s: string) => void };
+export function Files({ notify }: Props) {
+  const [drive, setDrive] = useState("SD"),
+    [path, setPath] = useState("/"),
+    [entries, setEntries] = useState<
+      { name: string; path: string; directory: boolean; size: number }[]
+    >([]),
+    [busy, setBusy] = useState(false),
+    [progress, setProgress] = useState(0),
+    [text, setText] = useState<string>(),
+    [selected, setSelected] = useState("");
+  const load = async () => {
+    setBusy(true);
+    setEntries([]);
+    try {
+      const r = await connection.command("fs.list", { drive, path });
+      setEntries(r.entries as typeof entries);
+      if (r.truncated) notify("Anzeige auf 200 Einträge begrenzt.");
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    if (connection.can("fs.list")) void load();
+  }, [drive, path]);
+  async function action(fn: () => Promise<void>) {
+    setBusy(true);
+    setProgress(0);
+    try {
+      await fn();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function open(p: string) {
+    await action(async () => {
+      const b = await readFile(drive, p, setProgress);
+      if (b.size > 262144)
+        throw new Error("Texteditor maximal 256 KiB. Bitte herunterladen.");
+      setText(await b.text());
+      setSelected(p);
+    });
+  }
+  return (
+    <>
+      <Section
+        eyebrow="SD & LITTLEFS"
+        title="Dateien"
+        right={
+          <Button
+            quiet
+            onClick={() => void load()}
+            disabled={busy || !connection.can("fs.list")}
+          >
+            <RefreshCw size={17} />
+          </Button>
+        }
+      />
+      <div className="segmented">
+        {["SD", "LittleFS"].map((d) => (
+          <button
+            key={d}
+            className={drive === d ? "active" : ""}
+            onClick={() => {
+              setDrive(d);
+              setPath("/");
+            }}
+          >
+            {d === "SD" ? "SD-Karte" : "Interner Speicher"}
+          </button>
+        ))}
+      </div>
+      <Notice>
+        Uploads, Umbenennen und Löschen sind auf /BruceControl/ beschränkt.
+        Konfigurationsdateien und Zugangsdaten sind geschützt.
+      </Notice>
+      <Card>
+        <div className="file-toolbar">
+          <Button
+            quiet
+            title="Übergeordnetes Verzeichnis"
+            onClick={() =>
+              setPath((p) =>
+                p === "/" ? "/" : p.slice(0, p.lastIndexOf("/")) || "/",
+              )
+            }
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <span className="mono path">{path}</span>
+          <Button
+            quiet
+            disabled={busy || !connection.can("fs.mkdir")}
+            onClick={() => {
+              const name = prompt("Ordnername in /BruceControl/");
+              if (name)
+                void action(async () => {
+                  await connection.command("fs.mkdir", {
+                    drive,
+                    path: "/BruceControl/" + name,
+                  });
+                  await load();
+                });
+            }}
+          >
+            <Plus size={16} />
+          </Button>
+          <label
+            className={
+              "button quiet " + (!connection.can("fs.write") ? "disabled" : "")
+            }
+          >
+            <Upload size={16} />
+            <span>Upload</span>
+            <input
+              hidden
+              type="file"
+              disabled={busy || !connection.can("fs.write")}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f)
+                  void action(async () => {
+                    await writeFile(
+                      drive,
+                      "/BruceControl/" + f.name,
+                      f,
+                      setProgress,
+                    );
+                    setPath("/BruceControl");
+                    await load();
+                    notify("Datei hochgeladen.");
+                  });
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {busy && <progress value={progress} max={100} />}
+        <div className="file-list">
+          {entries.map((f) => (
+            <div className="file-row" key={f.path}>
+              <button
+                className="file-name"
+                onClick={() =>
+                  f.directory ? setPath(f.path) : void open(f.path)
+                }
+              >
+                {f.directory ? <Folder size={20} /> : <FileText size={20} />}
+                <span>
+                  <b>{f.name}</b>
+                  <small>
+                    {f.directory ? "Verzeichnis" : f.size + " Bytes"}
+                  </small>
+                </span>
+              </button>
+              {!f.directory && (
+                <Button
+                  quiet
+                  title="Herunterladen"
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      const b = await readFile(drive, f.path, setProgress);
+                      download(f.name, b);
+                    })
+                  }
+                >
+                  <Download size={17} />
+                </Button>
+              )}
+              {!f.directory && f.path.startsWith("/BruceControl/") && (
+                <>
+                  <Button
+                    quiet
+                    title="Umbenennen"
+                    disabled={busy}
+                    onClick={() => {
+                      const name = prompt("Neuer Dateiname", f.name);
+                      if (name)
+                        void action(async () => {
+                          await connection.command("fs.rename", {
+                            drive,
+                            path: f.path,
+                            target:
+                              f.path.slice(0, f.path.lastIndexOf("/") + 1) +
+                              name,
+                          });
+                          await load();
+                        });
+                    }}
+                  >
+                    <Settings2 size={16} />
+                  </Button>
+                  <Button
+                    quiet
+                    title="Löschen"
+                    disabled={busy}
+                    onClick={() => {
+                      if (confirm(f.name + " dauerhaft vom Gerät löschen?"))
+                        void action(async () => {
+                          await connection.command("fs.delete", {
+                            drive,
+                            path: f.path,
+                          });
+                          await load();
+                        });
+                    }}
+                  >
+                    <Trash2 size={17} />
+                  </Button>
+                </>
+              )}
+            </div>
+          ))}
+          {!entries.length && !busy && (
+            <div className="empty">
+              <Folder size={36} />
+              <h3>
+                {connection.deviceOnline
+                  ? "Keine Dateien geladen"
+                  : "Gerät verbinden"}
+              </h3>
+              <p>
+                {connection.deviceOnline
+                  ? "Verzeichnis auswählen oder aktualisieren."
+                  : "Dateien erscheinen nach einer authentifizierten Verbindung."}
+              </p>
+            </div>
+          )}
+        </div>
+      </Card>
+      {text !== undefined && (
+        <Card>
+          <h3>
+            <FileText size={18} /> {selected}
+          </h3>
+          <textarea
+            className="editor"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            spellCheck={false}
+          />
+          <div className="row">
+            <Button
+              onClick={() => {
+                const name = prompt(
+                  "Als neue Datei speichern (bestehende Dateien werden nicht überschrieben)",
+                  selected.split("/").at(-1) + ".edited",
+                );
+                if (name)
+                  void action(async () => {
+                    await writeFile(
+                      drive,
+                      "/BruceControl/" + name,
+                      new Blob([text]),
+                      setProgress,
+                    );
+                    notify("Neue Datei gespeichert.");
+                  });
+              }}
+              disabled={busy || !connection.can("fs.write")}
+            >
+              <Save size={16} /> Als neue Datei
+            </Button>
+            <Button
+              quiet
+              onClick={() =>
+                download(selected.split("/").at(-1) || "datei.txt", text)
+              }
+            >
+              <Download size={16} /> Lokal
+            </Button>
+          </div>
+        </Card>
+      )}
+    </>
+  );
 }
-export function Terminal({notify}:Props){const [command,setCommand]=useState('info'),[lines,setLines]=useState<string[]>([]),[busy,setBusy]=useState(false);const run=async()=>{setBusy(true);setLines(l=>[...l,'› '+command]);try{const r=await connection.command('terminal.run',{command});setLines(l=>[...l,String(r.output||JSON.stringify(r))]);}catch(e){setLines(l=>[...l,'Fehler: '+(e as Error).message]);notify((e as Error).message);}finally{setBusy(false);}};return <><Section eyebrow="DIREKT ZUM GERÄT" title="Terminal" right={<TerminalIcon size={24}/>}/><Notice>Diagnosebefehle: info, free, uptime, date, storage free, rfid info, i2c. Kein beliebiger Shell- oder Angriffsbefehl wird weitergeleitet.</Notice><Card className="terminal"><div className="terminal-title"><span/><span/><span/> bruce / diagnose</div><pre role="log">{lines.length?lines.join('\n'):'Eine sichere Verbindung wartet auf dein Gerät.\nBefehle werden bei Abbruch nicht wiederholt.'}</pre><form onSubmit={e=>{e.preventDefault();void run();}}><span className="cyan">›</span><input aria-label="Terminalbefehl" value={command} onChange={e=>setCommand(e.target.value)} autoCapitalize="off" autoCorrect="off" spellCheck={false}/><Button disabled={busy||!connection.can('terminal.run')}>Senden</Button></form></Card><div className="row wrap">{['info','free','uptime','storage free','rfid info','i2c'].map(c=><Button quiet key={c} onClick={()=>setCommand(c)}>{c}</Button>)}</div></>;}
-export function Library({notify}:Props){const [all,setAll]=useState<Item[]>([]),[query,setQuery]=useState(''),[filter,setFilter]=useState('Alle'),[active,setActive]=useState<Item>(),[sort,setSort]=useState('date');const load=()=>items().then(setAll);useEffect(()=>{void load();},[]);
- async function importFile(f?:File){if(!f)return;try{if(f.size>10000000)throw new Error('Datei maximal 10 MB');const content=await f.text(),ext=f.name.split('.').at(-1)?.toLowerCase();let category=ext==='ir'?'IR':ext==='sub'?'Sub-GHz':ext==='nfc'||ext==='rfid'?'NFC':ext==='gpx'||ext==='geojson'?'GPS':'Datei';if(ext==='ir'&&!/Filetype:.*IR|type:.*raw|protocol:/i.test(content))throw new Error('IR-Format nicht erkannt');if(ext==='sub'&&!/Filetype:.*SubGhz/i.test(content))throw new Error('Sub-GHz-Format nicht erkannt');if(ext==='csv'&&content.includes('MAC,SSID,AuthMode,'))category='Wardriving';await saveItem({id:crypto.randomUUID(),name:f.name,content,category,favorite:false,updated:Date.now()});await load();notify('Lokal importiert.');}catch(e){notify((e as Error).message);}}
- const shown=all.filter(i=>(filter==='Alle'||filter==='Favoriten'&&i.favorite||filter===i.category)&&(i.name+' '+i.category).toLowerCase().includes(query.toLowerCase())).sort((a,b)=>sort==='name'?a.name.localeCompare(b.name):b.updated-a.updated);
- return <><Section eyebrow="DEINE SAMMLUNG, OFFLINE DABEI" title="Bibliothek" right={<label className="button quiet"><Upload size={16}/>Import<input hidden type="file" onChange={e=>{void importFile(e.target.files?.[0]);e.target.value='';}}/></label>}/><div className="search"><Search size={18}/><input placeholder="Signale, Routen, Profile suchen" aria-label="Bibliothek durchsuchen" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="chips">{['Alle','Favoriten','IR','Sub-GHz','NFC','GPS','Wardriving','Remote'].map(c=><button key={c} className={filter===c?'active':''} onClick={()=>setFilter(c)}>{c}</button>)}</div><div className="row spread"><small>{shown.length} Einträge · nur auf diesem Gerät</small><select aria-label="Sortierung" className="compact" value={sort} onChange={e=>setSort(e.target.value)}><option value="date">Zuletzt geändert</option><option value="name">Name A–Z</option></select></div><Card>{shown.map(i=><div className="file-row" key={i.id}><button className="file-name" onClick={()=>setActive(i)}><FileText size={21}/><span><b>{i.name}</b><small>{i.category} · {new Date(i.updated).toLocaleDateString('de-DE')}</small></span></button><Button quiet title="Favorit umschalten" onClick={()=>void saveItem({...i,favorite:!i.favorite}).then(load)}><Star size={17} fill={i.favorite?'currentColor':'none'}/></Button></div>)}{!shown.length&&<div className="empty"><Folder size={38}/><h3>Platz für deine Entdeckungen.</h3><p>Importiere eigene Signale und Dateien oder zeichne deine erste Route auf.</p></div>}</Card>{active&&<Card><div className="card-heading"><h3>{active.name}</h3><Button quiet onClick={()=>setActive(undefined)}>Schließen</Button></div><textarea className="editor" value={active.content} onChange={e=>setActive({...active,content:e.target.value})}/><div className="row wrap"><Button onClick={()=>void saveItem({...active,updated:Date.now()}).then(load).then(()=>notify('Gespeichert.'))}><Save size={16}/>Speichern</Button><Button quiet onClick={()=>{const n=prompt('Name',active.name);if(n){const a={...active,name:n,updated:Date.now()};setActive(a);void saveItem(a).then(load);}}}>Umbenennen</Button><Button quiet onClick={()=>download(active.name,active.content)}><Download size={16}/>Export</Button>{active.category==='GPS'&&active.content.startsWith('[')&&<Button quiet onClick={()=>{try{download(active.name+'.gpx',exportTrack(JSON.parse(active.content) as Point[],active.name,'gpx'));}catch{notify('Route ungültig');}}}>GPX</Button>}<Button quiet disabled={!connection.can('fs.write')} onClick={()=>void writeFile('SD','/BruceControl/'+active.name,new Blob([active.content])).then(()=>notify('Auf SD übertragen.')).catch(e=>notify(e.message))}>An SD senden</Button><Button quiet onClick={()=>{if(confirm('Lokalen Eintrag löschen?'))void removeItem(active.id).then(load).then(()=>setActive(undefined));}}><Trash2 size={16}/></Button></div></Card>}</>;
+export function Terminal({ notify }: Props) {
+  const [command, setCommand] = useState("info"),
+    [lines, setLines] = useState<string[]>([]),
+    [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    setLines((l) => [...l, "› " + command]);
+    try {
+      const r = await connection.command("terminal.run", { command });
+      setLines((l) => [...l, String(r.output || JSON.stringify(r))]);
+    } catch (e) {
+      setLines((l) => [...l, "Fehler: " + (e as Error).message]);
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Section
+        eyebrow="DIREKT ZUM GERÄT"
+        title="Terminal"
+        right={<TerminalIcon size={24} />}
+      />
+      <Notice>
+        Diagnosebefehle: info, free, uptime, date, storage free, rfid info, i2c.
+        Kein beliebiger Shell- oder Angriffsbefehl wird weitergeleitet.
+      </Notice>
+      <Card className="terminal">
+        <div className="terminal-title">
+          <span />
+          <span />
+          <span /> bruce / diagnose
+        </div>
+        <pre role="log">
+          {lines.length
+            ? lines.join("\n")
+            : "Eine sichere Verbindung wartet auf dein Gerät.\nBefehle werden bei Abbruch nicht wiederholt."}
+        </pre>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run();
+          }}
+        >
+          <span className="cyan">›</span>
+          <input
+            aria-label="Terminalbefehl"
+            value={command}
+            onChange={(e) => setCommand(e.target.value)}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <Button disabled={busy || !connection.can("terminal.run")}>
+            Senden
+          </Button>
+        </form>
+      </Card>
+      <div className="row wrap">
+        {["info", "free", "uptime", "storage free", "rfid info", "i2c"].map(
+          (c) => (
+            <Button quiet key={c} onClick={() => setCommand(c)}>
+              {c}
+            </Button>
+          ),
+        )}
+      </div>
+    </>
+  );
 }
-const modules=[{id:'IR',icon:ScanLine,title:'Infrarot',desc:'Signale & eigene Fernbedienungen',cap:'ir.receive'},{id:'Sub-GHz',icon:Radio,title:'Sub-GHz',desc:'CC1101 · Signale & Dateien'},{id:'NFC',icon:Nfc,title:'NFC / RFID',desc:'Tags & lokale Dumps'},{id:'WiFi',icon:Wifi,title:'WiFi',desc:'Hotspot & Verbindungsdiagnose',cap:'device.info'},{id:'LED',icon:Lightbulb,title:'LED & Display',desc:'Helligkeit & Anzeige',cap:'display.brightness'},{id:'Audio',icon:AudioLines,title:'Audio',desc:'Lautsprecher & Wiedergabe'},{id:'GPIO',icon:Settings2,title:'GPIO / I²C',desc:'Belegte Pins & Busdiagnose',cap:'terminal.run'},{id:'Apps',icon:Code2,title:'Apps & Skripte',desc:'Bruce JavaScript Apps'},{id:'System',icon:Power,title:'System',desc:'Speicher & Firmware',cap:'device.info'}];
-export function Modules({notify}:Props){const [active,setActive]=useState(''),[output,setOutput]=useState(''),[busy,setBusy]=useState(false),[brightness,setBrightness]=useState(50);const run=async(method:Method,p:unknown)=>{setBusy(true);try{const result=await connection.command(method,p);setOutput(typeof result.output==='string'?result.output:JSON.stringify(result,null,2));}catch(e){notify((e as Error).message);}finally{setBusy(false);}};
- if(!active)return <><Section eyebrow="DIE WERKZEUGE DEINES BRUCE" title="Module" right={<span className="tag">{connection.info?.capabilities.length||0} Fähigkeiten</span>}/><div className="module-grid">{modules.map(m=><button className="module-card" key={m.id} onClick={()=>setActive(m.id)}><div className="module-symbol"><m.icon size={25}/></div><div><h3>{m.title}</h3><p>{m.desc}</p><span className={'module-status '+(m.cap&&connection.can(m.cap as Method)?'cyan':'')}>{!connection.deviceOnline?'Gerät nicht verbunden':m.cap&&connection.can(m.cap as Method)?'Verfügbar':'Bridge-Unterstützung ausstehend'}</span></div><ChevronRight size={17}/></button>)}</div><Notice>Verfügbarkeit kommt aus der verbundenen Firmware. Es werden keine Spektren, Tags oder Funksignale simuliert.</Notice></>;
- return <><Button quiet onClick={()=>{setActive('');setOutput('');}}><ArrowLeft size={16}/>Alle Module</Button><Section eyebrow="BRUCE MODUL" title={modules.find(m=>m.id===active)?.title||active}/>{active==='IR'?<><Card><h3><ScanLine size={20}/> IR-Signale</h3><p>Das Board definiert IR-Empfang auf GPIO 1 und Senden auf GPIO 2. Die erste Testversion nutzt die vorhandenen Bruce-Handler.</p><div className="row wrap"><Button disabled={busy||!connection.can('ir.receive')} onClick={()=>void run('ir.receive',{raw:false,timeout:10})}>10 s empfangen</Button><Button quiet disabled={busy||!connection.can('ir.receive')} onClick={()=>void run('ir.receive',{raw:true,timeout:10})}>RAW empfangen</Button><Button quiet disabled={!output} onClick={()=>{const name=prompt('Signalname','Signal.ir');if(name)void saveItem({id:crypto.randomUUID(),name,category:'IR',content:output,updated:Date.now(),favorite:false}).then(()=>notify('Empfangsprotokoll gespeichert.'));}}>Protokoll speichern</Button></div><Notice>Klimaanlagen benötigen oft lange RAW-Nachrichten. Empfang und Wiedergabe am eigenen Gerät prüfen.</Notice></Card><RemoteBuilder notify={notify}/></>:active==='LED'?<Card><h3><Monitor size={18}/> Displayhelligkeit</h3><label>{brightness} %<input type="range" min="1" max="100" value={brightness} onChange={e=>setBrightness(Number(e.target.value))}/></label><Button disabled={busy||!connection.can('display.brightness')} onClick={()=>void run('display.brightness',{value:brightness})}>Anwenden</Button><Notice>RGB-Effekte sind noch nicht über die Bridge freigegeben.</Notice></Card>:active==='WiFi'||active==='System'?<Card><h3><Wifi size={18}/> Gerätestatus</h3><dl>{Object.entries(connection.info||{}).filter(([,v])=>typeof v!=='object').map(([k,v])=><div className="dl-row" key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>)}</dl><Button disabled={busy||!connection.deviceOnline} onClick={()=>void run('device.info',{})}><RefreshCw size={16}/>Abrufen</Button></Card>:active==='GPIO'?<Card><h3>Busdiagnose</h3><p>GPIO-Schreiben ist gesperrt. Display, SD und CC1101 teilen sich SPI; GPS und nRF24 teilen sich 43/44.</p><Button disabled={busy||!connection.can('terminal.run')} onClick={()=>void run('terminal.run',{command:'i2c'})}>I²C-Scan ausdrücklich starten</Button></Card>:<Card><div className="empty"><Radio size={35}/><h3>Bridge-Anbindung ausstehend</h3><p>{active==='Sub-GHz'?'CC1101 ist im Boardprofil definiert. Verwaltung eigener .sub-Dateien funktioniert in der Bibliothek; Empfang und Senden sind in dieser Bridge noch gesperrt.':active==='NFC'?'PN532 ist im Boardprofil definiert. Lokale Dumps lassen sich importieren und vergleichen. Lesen und Emulation sind noch nicht freigegeben.':active==='Apps'?'Bruces JavaScript-Interpreter ist vorhanden. App-Installation und Skriptsteuerung sind noch nicht über die Bridge implementiert.':'Das Board hat einen Lautsprecher. Audiowiedergabe ist noch nicht über die Bridge implementiert.'}</p></div></Card>}{output&&<Card><h3>Geräteantwort</h3><pre className="output">{output}</pre><Button quiet onClick={()=>download('bruce-result.txt',output)}><Download size={16}/>Export</Button></Card>}</>;
+export function Library({ notify }: Props) {
+  const [all, setAll] = useState<Item[]>([]),
+    [query, setQuery] = useState(""),
+    [filter, setFilter] = useState("Alle"),
+    [active, setActive] = useState<Item>(),
+    [sort, setSort] = useState("date");
+  const load = () => items().then(setAll);
+  useEffect(() => {
+    void load();
+  }, []);
+  async function importFile(f?: File) {
+    if (!f) return;
+    try {
+      if (f.size > 10000000) throw new Error("Datei maximal 10 MB");
+      const content = await f.text(),
+        ext = f.name.split(".").at(-1)?.toLowerCase();
+      let category =
+        ext === "ir"
+          ? "IR"
+          : ext === "sub"
+            ? "Sub-GHz"
+            : ext === "nfc" || ext === "rfid"
+              ? "NFC"
+              : ext === "gpx" || ext === "geojson"
+                ? "GPS"
+                : "Datei";
+      if (ext === "ir" && !/Filetype:.*IR|type:.*raw|protocol:/i.test(content))
+        throw new Error("IR-Format nicht erkannt");
+      if (ext === "sub" && !/Filetype:.*SubGhz/i.test(content))
+        throw new Error("Sub-GHz-Format nicht erkannt");
+      if (ext === "csv" && content.includes("MAC,SSID,AuthMode,"))
+        category = "Wardriving";
+      await saveItem({
+        id: crypto.randomUUID(),
+        name: f.name,
+        content,
+        category,
+        favorite: false,
+        updated: Date.now(),
+      });
+      await load();
+      notify("Lokal importiert.");
+    } catch (e) {
+      notify((e as Error).message);
+    }
+  }
+  const shown = all
+    .filter(
+      (i) =>
+        (filter === "Alle" ||
+          (filter === "Favoriten" && i.favorite) ||
+          filter === i.category) &&
+        (i.name + " " + i.category).toLowerCase().includes(query.toLowerCase()),
+    )
+    .sort((a, b) =>
+      sort === "name" ? a.name.localeCompare(b.name) : b.updated - a.updated,
+    );
+  return (
+    <>
+      <Section
+        eyebrow="DEINE SAMMLUNG, OFFLINE DABEI"
+        title="Bibliothek"
+        right={
+          <label className="button quiet">
+            <Upload size={16} />
+            Import
+            <input
+              hidden
+              type="file"
+              onChange={(e) => {
+                void importFile(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        }
+      />
+      <div className="search">
+        <Search size={18} />
+        <input
+          placeholder="Signale, Routen, Profile suchen"
+          aria-label="Bibliothek durchsuchen"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      <div className="chips">
+        {[
+          "Alle",
+          "Favoriten",
+          "IR",
+          "Sub-GHz",
+          "NFC",
+          "GPS",
+          "Wardriving",
+          "Remote",
+        ].map((c) => (
+          <button
+            key={c}
+            className={filter === c ? "active" : ""}
+            onClick={() => setFilter(c)}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="row spread">
+        <small>{shown.length} Einträge · nur auf diesem Gerät</small>
+        <select
+          aria-label="Sortierung"
+          className="compact"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
+          <option value="date">Zuletzt geändert</option>
+          <option value="name">Name A–Z</option>
+        </select>
+      </div>
+      <Card>
+        {shown.map((i) => (
+          <div className="file-row" key={i.id}>
+            <button className="file-name" onClick={() => setActive(i)}>
+              <FileText size={21} />
+              <span>
+                <b>{i.name}</b>
+                <small>
+                  {i.category} ·{" "}
+                  {new Date(i.updated).toLocaleDateString("de-DE")}
+                </small>
+              </span>
+            </button>
+            <Button
+              quiet
+              title="Favorit umschalten"
+              onClick={() =>
+                void saveItem({ ...i, favorite: !i.favorite }).then(load)
+              }
+            >
+              <Star size={17} fill={i.favorite ? "currentColor" : "none"} />
+            </Button>
+          </div>
+        ))}
+        {!shown.length && (
+          <div className="empty">
+            <Folder size={38} />
+            <h3>Platz für deine Entdeckungen.</h3>
+            <p>
+              Importiere eigene Signale und Dateien oder zeichne deine erste
+              Route auf.
+            </p>
+          </div>
+        )}
+      </Card>
+      {active && (
+        <Card>
+          <div className="card-heading">
+            <h3>{active.name}</h3>
+            <Button quiet onClick={() => setActive(undefined)}>
+              Schließen
+            </Button>
+          </div>
+          <textarea
+            className="editor"
+            value={active.content}
+            onChange={(e) => setActive({ ...active, content: e.target.value })}
+          />
+          <div className="row wrap">
+            <Button
+              onClick={() =>
+                void saveItem({ ...active, updated: Date.now() })
+                  .then(load)
+                  .then(() => notify("Gespeichert."))
+              }
+            >
+              <Save size={16} />
+              Speichern
+            </Button>
+            <Button
+              quiet
+              onClick={() => {
+                const n = prompt("Name", active.name);
+                if (n) {
+                  const a = { ...active, name: n, updated: Date.now() };
+                  setActive(a);
+                  void saveItem(a).then(load);
+                }
+              }}
+            >
+              Umbenennen
+            </Button>
+            <Button quiet onClick={() => download(active.name, active.content)}>
+              <Download size={16} />
+              Export
+            </Button>
+            {active.category === "GPS" && active.content.startsWith("[") && (
+              <Button
+                quiet
+                onClick={() => {
+                  try {
+                    download(
+                      active.name + ".gpx",
+                      exportTrack(
+                        JSON.parse(active.content) as Point[],
+                        active.name,
+                        "gpx",
+                      ),
+                    );
+                  } catch {
+                    notify("Route ungültig");
+                  }
+                }}
+              >
+                GPX
+              </Button>
+            )}
+            <Button
+              quiet
+              disabled={!connection.can("fs.write")}
+              onClick={() =>
+                void writeFile(
+                  "SD",
+                  "/BruceControl/" + active.name,
+                  new Blob([active.content]),
+                )
+                  .then(() => notify("Auf SD übertragen."))
+                  .catch((e) => notify(e.message))
+              }
+            >
+              An SD senden
+            </Button>
+            <Button
+              quiet
+              onClick={() => {
+                if (confirm("Lokalen Eintrag löschen?"))
+                  void removeItem(active.id)
+                    .then(load)
+                    .then(() => setActive(undefined));
+              }}
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
+        </Card>
+      )}
+    </>
+  );
 }
-type RemoteButton={id:string;label:string;path:string;color:string;x:number;y:number;group:string};
-function RemoteBuilder({notify}:Props){const [buttons,setButtons]=useState<RemoteButton[]>([]),[name,setName]=useState('Meine Fernbedienung'),[selected,setSelected]=useState(''),[edit,setEdit]=useState(true),[saved,setSaved]=useState<Item[]>([]);useEffect(()=>{void items().then(a=>setSaved(a.filter(i=>i.category==='Remote')));},[]);const current=buttons.find(b=>b.id===selected);const change=(p:Partial<RemoteButton>)=>setButtons(a=>a.map(b=>b.id===selected?{...b,...p}:b));
- return <Card><div className="card-heading"><h3>Remote-Builder</h3><Button quiet onClick={()=>setEdit(!edit)}>{edit?'Bedienen':'Bearbeiten'}</Button></div><label>Profilname<input value={name} onChange={e=>setName(e.target.value)}/></label><div className="remote-builder">{buttons.map(b=><button key={b.id} className={'remote-key '+(selected===b.id?'selected':'')} style={{left:b.x+'%',top:b.y+'%',background:b.color}} onClick={()=>{setSelected(b.id);if(!edit&&b.path&&confirm('Eigenes IR-Signal jetzt einmal senden?'))void connection.command('ir.send',{path:b.path,authorized:true}).then(()=>notify('Signal gesendet.')).catch(e=>notify(e.message));}}>{b.label}</button>)}{!buttons.length&&<div className="empty"><Move size={26}/><p>Gestalte deine eigene Fernbedienung.</p></div>}</div>{edit&&<><Button quiet onClick={()=>{const id=crypto.randomUUID();setButtons(a=>[...a,{id,label:'●',path:'',color:'#164357',x:10+(a.length%3)*28,y:10+Math.floor(a.length/3)*16,group:'Allgemein'}]);setSelected(id);}}><Plus size={16}/>Taste</Button>{current&&<div className="builder-fields"><label>Beschriftung / Symbol<input value={current.label} onChange={e=>change({label:e.target.value})} maxLength={12}/></label><label>Farbe<input type="color" value={current.color} onChange={e=>change({color:e.target.value})}/></label><label>Signal auf SD (/BruceControl/*.ir)<input value={current.path} onChange={e=>change({path:e.target.value})}/></label><label>Gruppe<input value={current.group} onChange={e=>change({group:e.target.value})}/></label><label>X-Position<input type="range" min="0" max="75" value={current.x} onChange={e=>change({x:Number(e.target.value)})}/></label><label>Y-Position<input type="range" min="0" max="85" value={current.y} onChange={e=>change({y:Number(e.target.value)})}/></label><Button quiet onClick={()=>setButtons(b=>b.filter(x=>x.id!==selected))}><Trash2 size={16}/>Taste entfernen</Button></div>}</>}<div className="row wrap"><Button onClick={()=>void saveItem({id:crypto.randomUUID(),name,category:'Remote',favorite:false,content:JSON.stringify(buttons),updated:Date.now()}).then(()=>items()).then(a=>{setSaved(a.filter(i=>i.category==='Remote'));notify('Profil gespeichert.');})}><Save size={16}/>Profil speichern</Button><Button quiet onClick={()=>download(name+'.json',JSON.stringify({name,buttons},null,2))}><Download size={16}/>Export</Button></div><select aria-label="Gespeichertes Profil laden" onChange={e=>{const p=saved.find(x=>x.id===e.target.value);if(p){try{setButtons(JSON.parse(p.content));setName(p.name);}catch{notify('Profil ungültig');}}}}><option value="">Gespeichertes Profil laden</option>{saved.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><Notice>IR-Signale müssen als gültige .ir-Datei auf SD oder LittleFS liegen. Jede Wiedergabe wird ausdrücklich bestätigt.</Notice></Card>;
+const modules = [
+  {
+    id: "IR",
+    icon: ScanLine,
+    title: "Infrarot",
+    desc: "Signale & eigene Fernbedienungen",
+    cap: "ir.receive",
+  },
+  {
+    id: "Sub-GHz",
+    icon: Radio,
+    title: "Sub-GHz",
+    desc: "CC1101 · Signale & Dateien",
+  },
+  { id: "NFC", icon: Nfc, title: "NFC / RFID", desc: "Tags & lokale Dumps" },
+  {
+    id: "WiFi",
+    icon: Wifi,
+    title: "WiFi",
+    desc: "Hotspot & Verbindungsdiagnose",
+    cap: "device.info",
+  },
+  {
+    id: "LED",
+    icon: Lightbulb,
+    title: "LED & Display",
+    desc: "Helligkeit & Anzeige",
+    cap: "display.brightness",
+  },
+  {
+    id: "Audio",
+    icon: AudioLines,
+    title: "Audio",
+    desc: "Lautsprecher & Wiedergabe",
+  },
+  {
+    id: "GPIO",
+    icon: Settings2,
+    title: "GPIO / I²C",
+    desc: "Belegte Pins & Busdiagnose",
+    cap: "terminal.run",
+  },
+  {
+    id: "Apps",
+    icon: Code2,
+    title: "Apps & Skripte",
+    desc: "Bruce JavaScript Apps",
+  },
+  {
+    id: "System",
+    icon: Power,
+    title: "System",
+    desc: "Speicher & Firmware",
+    cap: "device.info",
+  },
+];
+export function Modules({ notify }: Props) {
+  const [active, setActive] = useState(""),
+    [output, setOutput] = useState(""),
+    [busy, setBusy] = useState(false),
+    [brightness, setBrightness] = useState(50);
+  const run = async (method: Method, p: unknown) => {
+    setBusy(true);
+    try {
+      const result = await connection.command(method, p);
+      setOutput(
+        typeof result.output === "string"
+          ? result.output
+          : JSON.stringify(result, null, 2),
+      );
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!active)
+    return (
+      <>
+        <Section
+          eyebrow="DIE WERKZEUGE DEINES BRUCE"
+          title="Module"
+          right={
+            <span className="tag">
+              {connection.info?.capabilities.length || 0} Fähigkeiten
+            </span>
+          }
+        />
+        <div className="module-grid">
+          {modules.map((m) => (
+            <button
+              className="module-card"
+              key={m.id}
+              onClick={() => setActive(m.id)}
+            >
+              <div className="module-symbol">
+                <m.icon size={25} />
+              </div>
+              <div>
+                <h3>{m.title}</h3>
+                <p>{m.desc}</p>
+                <span
+                  className={
+                    "module-status " +
+                    (m.cap && connection.can(m.cap as Method) ? "cyan" : "")
+                  }
+                >
+                  {!connection.deviceOnline
+                    ? "Gerät nicht verbunden"
+                    : m.cap && connection.can(m.cap as Method)
+                      ? "Verfügbar"
+                      : "Bridge-Unterstützung ausstehend"}
+                </span>
+              </div>
+              <ChevronRight size={17} />
+            </button>
+          ))}
+        </div>
+        <Notice>
+          Verfügbarkeit kommt aus der verbundenen Firmware. Es werden keine
+          Spektren, Tags oder Funksignale simuliert.
+        </Notice>
+      </>
+    );
+  return (
+    <>
+      <Button
+        quiet
+        onClick={() => {
+          setActive("");
+          setOutput("");
+        }}
+      >
+        <ArrowLeft size={16} />
+        Alle Module
+      </Button>
+      <Section
+        eyebrow="BRUCE MODUL"
+        title={modules.find((m) => m.id === active)?.title || active}
+      />
+      {active === "IR" ? (
+        <>
+          <Card>
+            <h3>
+              <ScanLine size={20} /> IR-Signale
+            </h3>
+            <p>
+              Das Board definiert IR-Empfang auf GPIO 1 und Senden auf GPIO 2.
+              Die erste Testversion nutzt die vorhandenen Bruce-Handler.
+            </p>
+            <div className="row wrap">
+              <Button
+                disabled={busy || !connection.can("ir.receive")}
+                onClick={() =>
+                  void run("ir.receive", { raw: false, timeout: 10 })
+                }
+              >
+                10 s empfangen
+              </Button>
+              <Button
+                quiet
+                disabled={busy || !connection.can("ir.receive")}
+                onClick={() =>
+                  void run("ir.receive", { raw: true, timeout: 10 })
+                }
+              >
+                RAW empfangen
+              </Button>
+              <Button
+                quiet
+                disabled={!output}
+                onClick={() => {
+                  const name = prompt("Signalname", "Signal.ir");
+                  if (name)
+                    void saveItem({
+                      id: crypto.randomUUID(),
+                      name,
+                      category: "IR",
+                      content: output,
+                      updated: Date.now(),
+                      favorite: false,
+                    }).then(() => notify("Empfangsprotokoll gespeichert."));
+                }}
+              >
+                Protokoll speichern
+              </Button>
+            </div>
+            <Notice>
+              Klimaanlagen benötigen oft lange RAW-Nachrichten. Empfang und
+              Wiedergabe am eigenen Gerät prüfen.
+            </Notice>
+          </Card>
+          <RemoteBuilder notify={notify} />
+        </>
+      ) : active === "LED" ? (
+        <Card>
+          <h3>
+            <Monitor size={18} /> Displayhelligkeit
+          </h3>
+          <label>
+            {brightness} %
+            <input
+              type="range"
+              min="1"
+              max="100"
+              value={brightness}
+              onChange={(e) => setBrightness(Number(e.target.value))}
+            />
+          </label>
+          <Button
+            disabled={busy || !connection.can("display.brightness")}
+            onClick={() =>
+              void run("display.brightness", { value: brightness })
+            }
+          >
+            Anwenden
+          </Button>
+          <Notice>
+            RGB-Effekte sind noch nicht über die Bridge freigegeben.
+          </Notice>
+        </Card>
+      ) : active === "WiFi" || active === "System" ? (
+        <Card>
+          <h3>
+            <Wifi size={18} /> Gerätestatus
+          </h3>
+          <dl>
+            {Object.entries(connection.info || {})
+              .filter(([, v]) => typeof v !== "object")
+              .map(([k, v]) => (
+                <div className="dl-row" key={k}>
+                  <dt>{k}</dt>
+                  <dd>{String(v)}</dd>
+                </div>
+              ))}
+          </dl>
+          <Button
+            disabled={busy || !connection.deviceOnline}
+            onClick={() => void run("device.info", {})}
+          >
+            <RefreshCw size={16} />
+            Abrufen
+          </Button>
+        </Card>
+      ) : active === "GPIO" ? (
+        <Card>
+          <h3>Busdiagnose</h3>
+          <p>
+            GPIO-Schreiben ist gesperrt. Display, SD und CC1101 teilen sich SPI;
+            GPS und nRF24 teilen sich 43/44.
+          </p>
+          <Button
+            disabled={busy || !connection.can("terminal.run")}
+            onClick={() => void run("terminal.run", { command: "i2c" })}
+          >
+            I²C-Scan ausdrücklich starten
+          </Button>
+        </Card>
+      ) : (
+        <Card>
+          <div className="empty">
+            <Radio size={35} />
+            <h3>Bridge-Anbindung ausstehend</h3>
+            <p>
+              {active === "Sub-GHz"
+                ? "CC1101 ist im Boardprofil definiert. Verwaltung eigener .sub-Dateien funktioniert in der Bibliothek; Empfang und Senden sind in dieser Bridge noch gesperrt."
+                : active === "NFC"
+                  ? "PN532 ist im Boardprofil definiert. Lokale Dumps lassen sich importieren und vergleichen. Lesen und Emulation sind noch nicht freigegeben."
+                  : active === "Apps"
+                    ? "Bruces JavaScript-Interpreter ist vorhanden. App-Installation und Skriptsteuerung sind noch nicht über die Bridge implementiert."
+                    : "Das Board hat einen Lautsprecher. Audiowiedergabe ist noch nicht über die Bridge implementiert."}
+            </p>
+          </div>
+        </Card>
+      )}
+      {output && (
+        <Card>
+          <h3>Geräteantwort</h3>
+          <pre className="output">{output}</pre>
+          <Button quiet onClick={() => download("bruce-result.txt", output)}>
+            <Download size={16} />
+            Export
+          </Button>
+        </Card>
+      )}
+    </>
+  );
 }
-export function Settings({notify}:Props){const [relay,setRelay]=useState(DEFAULT_RELAY),[id,setId]=useState(''),[code,setCode]=useState(''),[busy,setBusy]=useState(false),[phase,setPhase]=useState(''),[quick,setQuick]=useState<string[]>(['remote','gps','files']);
- useEffect(()=>{void setting<string[]>('quick').then(v=>{if(v)setQuick(v);});if(connection.pair){setRelay(connection.pair.relay);setId(connection.pair.device);}},[]);
- const pair=async()=>{setBusy(true);try{if(!/^[a-f0-9]{32}$/.test(id)||!/^\d{8}$/.test(code))throw new Error('32-stellige Geräte-ID und 8-stelligen Code eingeben.');setPhase('Code wird geprüft …');const p=await api(relay,id,'pair',{code});setPhase('Jetzt den Encoder am Bruce drücken, um diese Kopplung zu bestätigen.');while(Date.now()<p.expires){await new Promise(r=>setTimeout(r,2000));const s=await api(relay,id,'claim',{secret:p.secret});if(s.approved){const credentials:Pair={relay,device:id,token:p.token};await setting('pair',credentials);connection.connect(credentials);setPhase('Erfolgreich gekoppelt.');setCode('');notify('Gerät gekoppelt.');return;}}throw new Error('Kopplung abgelaufen.');}catch(e){setPhase((e as Error).message);notify((e as Error).message);}finally{setBusy(false);}};
- return <><Section eyebrow="VERBINDUNG & APP" title="Einstellungen"/><Card><div className="card-heading"><h3><Wifi size={19}/> Gerät koppeln</h3><span className="tag">WSS · Protokoll v1</span></div><ol className="steps"><li>iPhone-Hotspot einschalten und Bruce mit diesem WLAN verbinden.</li><li>Am Bruce: Config → Bruce Control → Pair iPhone.</li><li>Geräte-ID und Code hier eingeben. Anschließend am Bruce den Encoder drücken.</li></ol><label>Relay-URL<input type="url" value={relay} onChange={e=>setRelay(e.target.value.trim())} placeholder="https://…workers.dev" autoCapitalize="off" autoCorrect="off"/></label><label>Geräte-ID<input value={id} onChange={e=>setId(e.target.value.trim().toLowerCase())} placeholder="32 Zeichen vom Gerätedisplay" autoCapitalize="off" autoCorrect="off" maxLength={32}/></label><label>Kopplungscode<input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,'').slice(0,8))} placeholder="8-stelliger Code" inputMode="numeric" autoComplete="one-time-code"/></label><Button onClick={()=>void pair()} disabled={busy}>{busy?'Warte auf Bestätigung …':'Sicher koppeln'}</Button>{phase&&<Notice>{phase}</Notice>}{connection.pair&&<Button quiet onClick={()=>{connection.disconnect();void clearPair();notify('Lokale Zugangsdaten gelöscht. Zum Widerrufen auch am Bruce „Revoke iPhone“ wählen.');}}>Dieses iPhone trennen</Button>}</Card><Card><h3>Schnellaktionen</h3>{[['remote','Fernsteuerung'],['gps','GPS Center'],['files','Dateien'],['terminal','Terminal'],['library','Bibliothek']].map(([v,l])=><label className="check" key={v}><input type="checkbox" checked={quick.includes(v)} onChange={e=>{const a=e.target.checked?[...quick,v]:quick.filter(x=>x!==v);setQuick(a);void setting('quick',a);}}/>{l}</label>)}</Card><Card><h3>Auf deinem iPhone installieren</h3><p>In Safari öffnen → Teilen → Zum Home-Bildschirm → Als Web-App öffnen. Beim ersten Besuch wird die Oberfläche für Offline-Nutzung gespeichert.</p><Notice>Der echte Test auf deinem iPhone mit iOS 27.0 steht noch aus. Ein Desktop-Browsertest belegt keine iOS-Freigabe.</Notice></Card><Card><h3>Datenschutz & Verbindung</h3><p>Bibliothek und Tracks liegen in IndexedDB dieses Browsers. Karten werden nur nach Aktivierung von OpenStreetMap geladen. Der Relay speichert Token-Hashes und kurzzeitig Befehls-IDs, keine Positionshistorie oder Dateiinhalte.</p><p>Die direkte lokale Bruce-WebUI lässt sich separat in Safari öffnen. HTTPS → lokales HTTP/WSS wird nicht als zuverlässiger Verbindungsweg vorausgesetzt.</p><div className="row wrap"><Button quiet onClick={()=>void items().then(a=>download('bruce-control-backup.json',JSON.stringify(a,null,2)))}><Download size={16}/>Bibliothek sichern</Button><label className="button quiet"><Upload size={16}/>Backup wiederherstellen<input hidden type="file" accept=".json" onChange={e=>{const f=e.target.files?.[0];if(f&&confirm('Backup importieren? Einträge mit derselben ID werden ersetzt.'))void f.text().then(restoreBackup).then(n=>notify(n+' Einträge wiederhergestellt.')).catch(e=>notify(e.message));e.target.value='';}}/></label><Button quiet onClick={()=>void navigator.storage?.persist().then(ok=>notify(ok?'Dauerhafter Speicher gewährt.':'Der Browser entscheidet über die Speicherdauer. Exporte als Backup verwenden.'))}><Save size={16}/>Speicher anfragen</Button><Button quiet onClick={()=>void navigator.clipboard?.writeText(id).then(()=>notify('Geräte-ID kopiert.'))}><Copy size={16}/>ID kopieren</Button></div><small>Bruce Control 0.1.0 · AGPL-3.0 · Hardwareprüfung ausstehend</small></Card></>;
+type RemoteButton = {
+  id: string;
+  label: string;
+  path: string;
+  color: string;
+  x: number;
+  y: number;
+  group: string;
+};
+function RemoteBuilder({ notify }: Props) {
+  const [buttons, setButtons] = useState<RemoteButton[]>([]),
+    [name, setName] = useState("Meine Fernbedienung"),
+    [selected, setSelected] = useState(""),
+    [edit, setEdit] = useState(true),
+    [saved, setSaved] = useState<Item[]>([]);
+  useEffect(() => {
+    void items().then((a) =>
+      setSaved(a.filter((i) => i.category === "Remote")),
+    );
+  }, []);
+  const current = buttons.find((b) => b.id === selected);
+  const change = (p: Partial<RemoteButton>) =>
+    setButtons((a) => a.map((b) => (b.id === selected ? { ...b, ...p } : b)));
+  return (
+    <Card>
+      <div className="card-heading">
+        <h3>Remote-Builder</h3>
+        <Button quiet onClick={() => setEdit(!edit)}>
+          {edit ? "Bedienen" : "Bearbeiten"}
+        </Button>
+      </div>
+      <label>
+        Profilname
+        <input value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <div className="remote-builder">
+        {buttons.map((b) => (
+          <button
+            key={b.id}
+            className={"remote-key " + (selected === b.id ? "selected" : "")}
+            style={{ left: b.x + "%", top: b.y + "%", background: b.color }}
+            onClick={() => {
+              setSelected(b.id);
+              if (
+                !edit &&
+                b.path &&
+                confirm("Eigenes IR-Signal jetzt einmal senden?")
+              )
+                void connection
+                  .command("ir.send", { path: b.path, authorized: true })
+                  .then(() => notify("Signal gesendet."))
+                  .catch((e) => notify(e.message));
+            }}
+          >
+            {b.label}
+          </button>
+        ))}
+        {!buttons.length && (
+          <div className="empty">
+            <Move size={26} />
+            <p>Gestalte deine eigene Fernbedienung.</p>
+          </div>
+        )}
+      </div>
+      {edit && (
+        <>
+          <Button
+            quiet
+            onClick={() => {
+              const id = crypto.randomUUID();
+              setButtons((a) => [
+                ...a,
+                {
+                  id,
+                  label: "●",
+                  path: "",
+                  color: "#164357",
+                  x: 10 + (a.length % 3) * 28,
+                  y: 10 + Math.floor(a.length / 3) * 16,
+                  group: "Allgemein",
+                },
+              ]);
+              setSelected(id);
+            }}
+          >
+            <Plus size={16} />
+            Taste
+          </Button>
+          {current && (
+            <div className="builder-fields">
+              <label>
+                Beschriftung / Symbol
+                <input
+                  value={current.label}
+                  onChange={(e) => change({ label: e.target.value })}
+                  maxLength={12}
+                />
+              </label>
+              <label>
+                Farbe
+                <input
+                  type="color"
+                  value={current.color}
+                  onChange={(e) => change({ color: e.target.value })}
+                />
+              </label>
+              <label>
+                Signal auf SD (/BruceControl/*.ir)
+                <input
+                  value={current.path}
+                  onChange={(e) => change({ path: e.target.value })}
+                />
+              </label>
+              <label>
+                Gruppe
+                <input
+                  value={current.group}
+                  onChange={(e) => change({ group: e.target.value })}
+                />
+              </label>
+              <label>
+                X-Position
+                <input
+                  type="range"
+                  min="0"
+                  max="75"
+                  value={current.x}
+                  onChange={(e) => change({ x: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                Y-Position
+                <input
+                  type="range"
+                  min="0"
+                  max="85"
+                  value={current.y}
+                  onChange={(e) => change({ y: Number(e.target.value) })}
+                />
+              </label>
+              <Button
+                quiet
+                onClick={() =>
+                  setButtons((b) => b.filter((x) => x.id !== selected))
+                }
+              >
+                <Trash2 size={16} />
+                Taste entfernen
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+      <div className="row wrap">
+        <Button
+          onClick={() =>
+            void saveItem({
+              id: crypto.randomUUID(),
+              name,
+              category: "Remote",
+              favorite: false,
+              content: JSON.stringify(buttons),
+              updated: Date.now(),
+            })
+              .then(() => items())
+              .then((a) => {
+                setSaved(a.filter((i) => i.category === "Remote"));
+                notify("Profil gespeichert.");
+              })
+          }
+        >
+          <Save size={16} />
+          Profil speichern
+        </Button>
+        <Button
+          quiet
+          onClick={() =>
+            download(name + ".json", JSON.stringify({ name, buttons }, null, 2))
+          }
+        >
+          <Download size={16} />
+          Export
+        </Button>
+      </div>
+      <select
+        aria-label="Gespeichertes Profil laden"
+        onChange={(e) => {
+          const p = saved.find((x) => x.id === e.target.value);
+          if (p) {
+            try {
+              setButtons(JSON.parse(p.content));
+              setName(p.name);
+            } catch {
+              notify("Profil ungültig");
+            }
+          }
+        }}
+      >
+        <option value="">Gespeichertes Profil laden</option>
+        {saved.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <Notice>
+        IR-Signale müssen als gültige .ir-Datei auf SD oder LittleFS liegen.
+        Jede Wiedergabe wird ausdrücklich bestätigt.
+      </Notice>
+    </Card>
+  );
+}
+export function Settings({ notify }: Props) {
+  const [relay, setRelay] = useState(DEFAULT_RELAY),
+    [id, setId] = useState(""),
+    [code, setCode] = useState(""),
+    [busy, setBusy] = useState(false),
+    [phase, setPhase] = useState(""),
+    [quick, setQuick] = useState<string[]>(["remote", "gps", "files"]);
+  useEffect(() => {
+    void setting<string[]>("quick").then((v) => {
+      if (v) setQuick(v);
+    });
+    if (connection.pair) {
+      setRelay(connection.pair.relay);
+      setId(connection.pair.device);
+    }
+  }, []);
+  const pair = async () => {
+    setBusy(true);
+    try {
+      if (!/^[a-f0-9]{32}$/.test(id) || !/^\d{8}$/.test(code))
+        throw new Error("32-stellige Geräte-ID und 8-stelligen Code eingeben.");
+      setPhase("Code wird geprüft …");
+      const p = await api(relay, id, "pair", { code });
+      setPhase(
+        "Jetzt den Encoder am Bruce drücken, um diese Kopplung zu bestätigen.",
+      );
+      while (Date.now() < p.expires) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const s = await api(relay, id, "claim", { secret: p.secret });
+        if (s.approved) {
+          const credentials: Pair = { relay, device: id, token: p.token };
+          await setting("pair", credentials);
+          connection.connect(credentials);
+          setPhase("Erfolgreich gekoppelt.");
+          setCode("");
+          notify("Gerät gekoppelt.");
+          return;
+        }
+      }
+      throw new Error("Kopplung abgelaufen.");
+    } catch (e) {
+      setPhase((e as Error).message);
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Section eyebrow="VERBINDUNG & APP" title="Einstellungen" />
+      <Card>
+        <div className="card-heading">
+          <h3>
+            <Wifi size={19} /> Gerät koppeln
+          </h3>
+          <span className="tag">WSS · Protokoll v1</span>
+        </div>
+        <ol className="steps">
+          <li>
+            iPhone-Hotspot einschalten und Bruce mit diesem WLAN verbinden.
+          </li>
+          <li>Am Bruce: Config → Bruce Control → Pair iPhone.</li>
+          <li>
+            Geräte-ID und Code hier eingeben. Anschließend am Bruce den Encoder
+            drücken.
+          </li>
+        </ol>
+        <label>
+          Relay-URL
+          <input
+            type="url"
+            value={relay}
+            onChange={(e) => setRelay(e.target.value.trim())}
+            placeholder="https://…workers.dev"
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
+        </label>
+        <label>
+          Geräte-ID
+          <input
+            value={id}
+            onChange={(e) => setId(e.target.value.trim().toLowerCase())}
+            placeholder="32 Zeichen vom Gerätedisplay"
+            autoCapitalize="off"
+            autoCorrect="off"
+            maxLength={32}
+          />
+        </label>
+        <label>
+          Kopplungscode
+          <input
+            value={code}
+            onChange={(e) =>
+              setCode(e.target.value.replace(/\D/g, "").slice(0, 8))
+            }
+            placeholder="8-stelliger Code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+          />
+        </label>
+        <Button onClick={() => void pair()} disabled={busy}>
+          {busy ? "Warte auf Bestätigung …" : "Sicher koppeln"}
+        </Button>
+        {phase && <Notice>{phase}</Notice>}
+        {connection.pair && (
+          <Button
+            quiet
+            onClick={() => {
+              connection.disconnect();
+              void clearPair();
+              notify(
+                "Lokale Zugangsdaten gelöscht. Zum Widerrufen auch am Bruce „Revoke iPhone“ wählen.",
+              );
+            }}
+          >
+            Dieses iPhone trennen
+          </Button>
+        )}
+      </Card>
+      <Card>
+        <h3>Schnellaktionen</h3>
+        {[
+          ["remote", "Fernsteuerung"],
+          ["gps", "GPS Center"],
+          ["files", "Dateien"],
+          ["terminal", "Terminal"],
+          ["library", "Bibliothek"],
+        ].map(([v, l]) => (
+          <label className="check" key={v}>
+            <input
+              type="checkbox"
+              checked={quick.includes(v)}
+              onChange={(e) => {
+                const a = e.target.checked
+                  ? [...quick, v]
+                  : quick.filter((x) => x !== v);
+                setQuick(a);
+                void setting("quick", a);
+              }}
+            />
+            {l}
+          </label>
+        ))}
+      </Card>
+      <Card>
+        <h3>Auf deinem iPhone installieren</h3>
+        <p>
+          In Safari öffnen → Teilen → Zum Home-Bildschirm → Als Web-App öffnen.
+          Beim ersten Besuch wird die Oberfläche für Offline-Nutzung
+          gespeichert.
+        </p>
+        <Notice>
+          Der echte Test auf deinem iPhone mit iOS 27.0 steht noch aus. Ein
+          Desktop-Browsertest belegt keine iOS-Freigabe.
+        </Notice>
+      </Card>
+      <Card>
+        <h3>Datenschutz & Verbindung</h3>
+        <p>
+          Bibliothek und Tracks liegen in IndexedDB dieses Browsers. Karten
+          werden nur nach Aktivierung von OpenStreetMap geladen. Der Relay
+          speichert Token-Hashes und kurzzeitig Befehls-IDs, keine
+          Positionshistorie oder Dateiinhalte.
+        </p>
+        <p>
+          Die direkte lokale Bruce-WebUI lässt sich separat in Safari öffnen.
+          HTTPS → lokales HTTP/WSS wird nicht als zuverlässiger Verbindungsweg
+          vorausgesetzt.
+        </p>
+        <div className="row wrap">
+          <Button
+            quiet
+            onClick={() =>
+              void items().then((a) =>
+                download(
+                  "bruce-control-backup.json",
+                  JSON.stringify(a, null, 2),
+                ),
+              )
+            }
+          >
+            <Download size={16} />
+            Bibliothek sichern
+          </Button>
+          <label className="button quiet">
+            <Upload size={16} />
+            Backup wiederherstellen
+            <input
+              hidden
+              type="file"
+              accept=".json"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (
+                  f &&
+                  confirm(
+                    "Backup importieren? Einträge mit derselben ID werden ersetzt.",
+                  )
+                )
+                  void f
+                    .text()
+                    .then(restoreBackup)
+                    .then((n) => notify(n + " Einträge wiederhergestellt."))
+                    .catch((e) => notify(e.message));
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <Button
+            quiet
+            onClick={() =>
+              void navigator.storage
+                ?.persist()
+                .then((ok) =>
+                  notify(
+                    ok
+                      ? "Dauerhafter Speicher gewährt."
+                      : "Der Browser entscheidet über die Speicherdauer. Exporte als Backup verwenden.",
+                  ),
+                )
+            }
+          >
+            <Save size={16} />
+            Speicher anfragen
+          </Button>
+          <Button
+            quiet
+            onClick={() =>
+              void navigator.clipboard
+                ?.writeText(id)
+                .then(() => notify("Geräte-ID kopiert."))
+            }
+          >
+            <Copy size={16} />
+            ID kopieren
+          </Button>
+        </div>
+        <small>
+          Bruce Control 0.1.0 · AGPL-3.0 · Hardwareprüfung ausstehend
+        </small>
+      </Card>
+    </>
+  );
 }

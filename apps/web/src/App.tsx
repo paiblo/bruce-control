@@ -1,50 +1,941 @@
-import {lazy,Suspense,useEffect,useRef,useState} from 'react';
-import {Activity,ArrowDown,ArrowLeft,ArrowRight,ArrowUp,BookOpen,ChevronRight,CircleHelp,Command,Folder,Gamepad2,Gauge,Grid2X2,Home,Link2,MapPin,Maximize2,MoreHorizontal,RefreshCw,Satellite,ScanLine,Settings2,ShieldCheck,Terminal as TerminalIcon,Wifi,X,Check,Download} from 'lucide-react';
-import {connection} from './connection';
-import {setting} from './db';
-import {Button,Card,Notice,Ring,Section,Stat} from './ui';
-import {Files,Library,Modules,Settings,Terminal} from './Tools';
-import {renderScreen} from './screen';
-const GpsCenter=lazy(()=>import('./GpsCenter'));
-const pages={home:'Übersicht',remote:'Fernsteuerung',modules:'Module',gps:'GPS Center',library:'Bibliothek',files:'Dateien',terminal:'Terminal',settings:'Einstellungen'};
-type Page=keyof typeof pages;
-const icons={home:Home,remote:Gamepad2,modules:Grid2X2,gps:MapPin,library:BookOpen,files:Folder,terminal:TerminalIcon,settings:Settings2};
-function validPage(p:string):p is Page{return p in pages;}
-export default function App(){
- const [page,setPage]=useState<Page>(validPage(location.hash.slice(1))?location.hash.slice(1) as Page:'home'),[more,setMore]=useState(false),[,update]=useState(0),[toast,setToast]=useState(''),[network,setNetwork]=useState(navigator.onLine),[updateWorker,setUpdateWorker]=useState<ServiceWorker>();
- const toastTimer=useRef<ReturnType<typeof setTimeout>>(undefined);
- const notify=(text:string)=>{setToast(text);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),6500);};
- const go=(p:Page)=>{location.hash=p;setMore(false);window.scrollTo({top:0,behavior:'smooth'});};
- useEffect(()=>{const onHash=()=>{const p=location.hash.slice(1);if(validPage(p))setPage(p);};const rerender=()=>update(n=>n+1);const net=()=>setNetwork(navigator.onLine);connection.addEventListener('change',rerender);window.addEventListener('hashchange',onHash);window.addEventListener('online',net);window.addEventListener('offline',net);void connection.restore();const poll=setInterval(()=>{if(!document.hidden&&connection.deviceOnline)void connection.refresh();},10000);
- if('serviceWorker'in navigator)void navigator.serviceWorker.register(import.meta.env.BASE_URL+'sw.js',{scope:import.meta.env.BASE_URL}).then(r=>{if(r.waiting)setUpdateWorker(r.waiting);r.addEventListener('updatefound',()=>{const w=r.installing;w?.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)setUpdateWorker(w);});});}).catch(()=>notify('Offline-Cache konnte nicht eingerichtet werden.'));
- return()=>{clearInterval(poll);connection.removeEventListener('change',rerender);window.removeEventListener('hashchange',onHash);window.removeEventListener('online',net);window.removeEventListener('offline',net);};},[]);
- const connected=connection.status==='connected'&&connection.deviceOnline;
- return <div className="app-shell"><aside className="sidebar"><a className="brand" href="#home"><Logo/><span>BRUCE<span>CONTROL</span></span><small>01</small></a><div className="sidebar-label">DEINE STEUERZENTRALE</div><nav>{Object.entries(pages).map(([id,label])=>{const Icon=icons[id as Page];return <button key={id} className={page===id?'active':''} onClick={()=>go(id as Page)}><Icon size={19}/>{label}{page===id&&<span className="nav-indicator"/>}</button>;})}</nav><div className="sidebar-footer"><ShieldCheck size={18}/><span>Private Verbindung<small>Endpunkte mit TLS geschützt</small></span></div></aside>
- <div className="main-shell"><header className="topbar"><a className="mobile-brand" href="#home"><Logo/><b>BRUCE <span>CONTROL</span></b></a><div className="breadcrumb">Workspace <ChevronRight size={13}/><b>{pages[page]}</b></div><div className="topbar-right"><span className={'connection-pill '+(connected?'online':'')}><span/>{!network?'App offline':connected?'Gerät verbunden':connection.status==='reconnecting'?'Verbinde erneut …':'Kein Gerät verbunden'}</span><button className="icon-button" title="Einstellungen" onClick={()=>go('settings')}><Settings2 size={19}/></button></div></header>
- {!network&&<div className="offline-banner">Offline · Deine Bibliothek und gespeicherte Tracks sind weiterhin verfügbar.</div>}{updateWorker&&<div className="update-banner">Ein App-Update ist bereit.<Button quiet onClick={()=>{updateWorker.postMessage('SKIP_WAITING');navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload(),{once:true});}}>Jetzt aktualisieren</Button></div>}
- <main key={page} className="page"><Suspense fallback={<div className="empty">GPS Center wird geladen …</div>}>{page==='home'?<Dashboard go={go}/>:page==='remote'?<Remote notify={notify}/>:page==='modules'?<Modules notify={notify}/>:page==='gps'?<GpsCenter notify={notify}/>:page==='library'?<Library notify={notify}/>:page==='files'?<Files notify={notify}/>:page==='terminal'?<Terminal notify={notify}/>:<Settings notify={notify}/>}</Suspense><footer className="page-footer"><span><Logo/> BRUCE CONTROL</span><small>Dein Gerät. Deine Kontrolle.</small><small>TESTVERSION 0.1.0</small></footer></main>
- </div><nav className="bottom-nav">{(['home','remote','modules','gps'] as Page[]).map(id=>{const Icon=icons[id];return <button className={page===id?'active':''} key={id} onClick={()=>go(id)}><Icon size={22}/><span>{id==='home'?'Home':id==='remote'?'Remote':id==='gps'?'GPS':pages[id]}</span></button>;})}<button className={['library','files','terminal','settings'].includes(page)?'active':''} onClick={()=>setMore(true)}><MoreHorizontal size={23}/><span>Mehr</span></button></nav>
- {more&&<div className="sheet-backdrop" onClick={()=>setMore(false)}><div className="sheet" role="dialog" aria-modal="true" aria-label="Weitere Werkzeuge" onClick={e=>e.stopPropagation()}><div className="sheet-handle"/><div className="card-heading"><h2>Deine Werkzeuge</h2><Button quiet onClick={()=>setMore(false)} title="Schließen"><X size={20}/></Button></div>{(['library','files','terminal','settings'] as Page[]).map(p=>{const Icon=icons[p];return <button className="sheet-link" key={p} onClick={()=>go(p)}><Icon size={21}/>{pages[p]}<ChevronRight size={17}/></button>;})}</div></div>}
- {toast&&<div role="status" className="toast"><CircleHelp size={18}/><span>{toast}</span><button title="Meldung schließen" onClick={()=>setToast('')}><X size={16}/></button></div>}</div>;
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  Activity,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  BookOpen,
+  ChevronRight,
+  CircleHelp,
+  Command,
+  Folder,
+  Gamepad2,
+  Gauge,
+  Grid2X2,
+  Home,
+  Link2,
+  MapPin,
+  Maximize2,
+  MoreHorizontal,
+  RefreshCw,
+  Satellite,
+  ScanLine,
+  Settings2,
+  ShieldCheck,
+  Terminal as TerminalIcon,
+  Wifi,
+  X,
+  Check,
+  Download,
+} from "lucide-react";
+import { connection } from "./connection";
+import { setting } from "./db";
+import { Button, Card, Notice, Ring, Section, Stat } from "./ui";
+import { Files, Library, Modules, Settings, Terminal } from "./Tools";
+import { renderScreen } from "./screen";
+const GpsCenter = lazy(() => import("./GpsCenter"));
+const pages = {
+  home: "Übersicht",
+  remote: "Fernsteuerung",
+  modules: "Module",
+  gps: "GPS Center",
+  library: "Bibliothek",
+  files: "Dateien",
+  terminal: "Terminal",
+  settings: "Einstellungen",
+};
+type Page = keyof typeof pages;
+const icons = {
+  home: Home,
+  remote: Gamepad2,
+  modules: Grid2X2,
+  gps: MapPin,
+  library: BookOpen,
+  files: Folder,
+  terminal: TerminalIcon,
+  settings: Settings2,
+};
+function validPage(p: string): p is Page {
+  return p in pages;
 }
-export function Logo(){return <svg className="logo" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M8 6h17l8 8-8 6 8 7-8 7H8V6Z" stroke="currentColor" strokeWidth="2.5"/><path d="M15 12h8l3 3-5 3h-6v-6Zm0 11h7l4 4-4 2h-7v-6Z" fill="currentColor"/><path d="M3 14v12M37 16v8" stroke="currentColor" strokeWidth="2"/></svg>;}
-function DeviceArt(){return <svg viewBox="0 0 440 240" className="device-art" aria-label="Illustration des T-Embed. Kein echter Gerätebildschirm."><defs><linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#34404a"/><stop offset=".5" stopColor="#141d25"/><stop offset="1" stopColor="#263540"/></linearGradient><linearGradient id="knob" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#596675"/><stop offset=".4" stopColor="#202c37"/><stop offset="1" stopColor="#0a1118"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="12" stdDeviation="12" floodOpacity=".6"/></filter></defs><g transform="translate(29 37) rotate(-8 180 80)" filter="url(#shadow)"><path d="M327 40h45v9h-45z" fill="#263844"/><rect x="363" y="25" width="10" height="36" rx="4" fill="#40505d"/><path d="M42 12h259q24 0 24 24v119q0 24-24 24H42q-24 0-24-24V36q0-24 24-24Z" fill="url(#body)" stroke="#526574"/><rect x="37" y="33" width="192" height="126" rx="11" fill="#02080c" stroke="#415361"/><rect x="45" y="41" width="176" height="110" rx="6" fill="#07121b"/><path d="M103 67h43l13 12-16 12 16 13-16 12h-40V67Z" stroke="#164052" strokeWidth="2"/><text x="133" y="138" fontSize="7" fill="#547182" textAnchor="middle" fontFamily="monospace">BRUCE · NETWORK BRIDGE</text><circle cx="276" cy="79" r="35" fill="#09131c" stroke="#235166" strokeWidth="3"/><circle cx="276" cy="79" r="29" fill="url(#knob)" stroke="#5b6d7a"/><circle cx="276" cy="79" r="22" fill="none" stroke="#344552" strokeDasharray="1 4" strokeWidth="3"/><rect x="263" y="131" width="25" height="10" rx="5" fill="#0a141c" stroke="#526574"/>{[53,74,95,116,137,158,179].map(x=><circle key={x} cx={x} cy="168" r="2" fill="#27617a"/>)}<text x="41" y="26" fontSize="6" fill="#91a7b7" fontFamily="monospace">LILYGO / T-EMBED CC1101 PLUS</text><circle cx="29" cy="23" r="2.5" fill="#0a1017"/><circle cx="314" cy="166" r="2.5" fill="#0a1017"/></g></svg>;}
-function Dashboard({go}:{go:(p:Page)=>void}){
- const d=connection.info,[quick,setQuick]=useState<string[]>(['remote','gps','files']),[history,setHistory]=useState<number[]>([]);
- useEffect(()=>{void setting<string[]>('quick').then(q=>{if(q)setQuick(q);});},[]);
- useEffect(()=>{if(d)setHistory(h=>[...h.slice(-23),d.heapFree]);},[d]);
- const online=connection.deviceOnline&&!!d;
- return <><Section eyebrow="ALLES IM BLICK" title="Dein Bruce. Deine Kontrolle." right={<span className="date-label">{new Date().toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'})}</span>}/><div className="dashboard-grid"><Card className="device-card"><div className="card-heading"><span className="eyebrow">MEIN GERÄT</span><span className={'tag '+(online?'cyan':'')}><span className="status-dot"/>{online?'Online':'Nicht verbunden'}</span></div><div className="device-info"><h2>{d?.board||'T-Embed CC1101 Plus'}</h2><p>{d?'Firmware '+d.firmware+' · Bridge '+d.bridge:'Verbinde dein Gerät mit deiner Steuerzentrale.'}</p></div><DeviceArt/><div className="device-bottom"><div className="device-connection"><div className="signal-icon"><Wifi size={20}/></div><span>{online?'Sicher über WSS':'Bereit für die erste Verbindung'}<small>{online?d?.ssid:'iPhone-Hotspot → Relay → Bruce'}</small></span></div><Button onClick={()=>go(online?'remote':'settings')}>{online?'Steuern':'Gerät koppeln'}<ChevronRight size={16}/></Button></div></Card>
- <Card className="connection-card"><div className="card-heading"><h3><Activity size={18}/> Verbindung</h3><ShieldCheck size={18} className="muted"/></div><div className={'connection-orbit '+(online?'is-online':'')}><div className="orbit one"/><div className="orbit two"/><div className="orbit-core"><Link2 size={30}/></div><span className="orbit-node phone"/><span className="orbit-node bruce"/></div><div className="connection-state"><h3>{online?'Alles verbunden.':'Dein Bruce wartet.'}</h3><p>{online?'Authentifizierte Sitzung aktiv':'Kopple dein Gerät einmalig per Code.'}</p></div><div className="connection-route"><span>iPhone</span><i/><span>Relay</span><i/><span>Bruce</span></div><div className="divider"/><dl><dt>Transport</dt><dd>{connection.status==='connected'?'WSS / TLS':'—'}</dd><dt>Geräte-IP</dt><dd className="mono">{d?.ip||'—'}</dd><dt>Zuletzt verbunden</dt><dd>{connection.lastConnected?new Date(connection.lastConnected).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'Noch nicht'}</dd></dl></Card>
- <Card className="system-card"><div className="card-heading"><h3><Gauge size={18}/> Systemstatus</h3><Button quiet title="Status aktualisieren" onClick={()=>void connection.refresh()} disabled={!connection.deviceOnline}><RefreshCw size={15}/></Button></div><div className="system-rings"><Ring label="Arbeitsspeicher" free={d?.heapFree} total={d?.heapTotal}/><Ring label="PSRAM" free={d?.psramFree} total={d?.psramTotal}/><Ring label="LittleFS" free={d?d.fsTotal-d.fsUsed:undefined} total={d?.fsTotal}/></div><div className="metrics four"><Stat label="Betriebsdauer" value={d?Math.floor(d.uptime/3600)+'h '+Math.floor(d.uptime%3600/60)+'m':'—'}/><Stat label="WLAN-Signal" value={d?.rssi??'—'} unit={d?'dBm':''}/><Stat label="SD-Karte" value={d?(d.sd?'Eingehängt':'Nicht erkannt'):'—'}/><Stat label="Batterie" value={d?.battery!==undefined?d.battery+'%':'Nicht gemeldet'}/></div>{history.length>1&&<div className="history"><small>Freier Heap · aktuelle Sitzung</small><svg viewBox="0 0 300 35" preserveAspectRatio="none"><polyline points={history.map((h,i)=>`${i*300/(history.length-1)},${33-(h/(d?.heapTotal||1))*30}`).join(' ')} fill="none" stroke="#33c9e5" strokeWidth="1.6"/></svg></div>}</Card>
- <Card className="quick-card"><div className="card-heading"><h3>Schnellzugriff</h3><button className="text-button" onClick={()=>go('settings')}>Anpassen</button></div><div className="quick-grid">{quick.filter(validPage).map(p=>{const Icon=icons[p];return <button key={p} onClick={()=>go(p)}><Icon size={21}/><span>{pages[p]}</span><ChevronRight size={15}/></button>;})}</div></Card></div><div className="section-sub"><div><span className="eyebrow">BEREIT, WENN DU ES BIST</span><h2>Mehr aus deinem Gerät.</h2></div><button className="text-button" onClick={()=>go('modules')}>Alle Module <ArrowRight size={15}/></button></div><div className="feature-row"><button onClick={()=>go('remote')}><div className="feature-icon blue"><Gamepad2 size={24}/></div><h3>In deiner Hand.</h3><p>Das originale Bruce-Menü, direkt auf deinem iPhone.</p><span>Fernsteuerung öffnen <ArrowRight size={15}/></span></button><button onClick={()=>go('gps')}><div className="feature-icon green"><Satellite size={24}/></div><h3>Deine nächste Route.</h3><p>Positionen entdecken, Tracks aufzeichnen, lokal behalten.</p><span>GPS Center entdecken <ArrowRight size={15}/></span></button><button onClick={()=>go('library')}><div className="feature-icon purple"><BookOpen size={24}/></div><h3>Alles dabei.</h3><p>Eigene Signale, Dateien und Fernbedienungen an einem Ort.</p><span>Zur Bibliothek <ArrowRight size={15}/></span></button></div><Notice>Testversion · Gerätewerte erscheinen ausschließlich nach einer echten Verbindung. Firmware und iOS-Hotspot müssen noch an deiner Hardware geprüft werden.</Notice></>;
+export default function App() {
+  const [page, setPage] = useState<Page>(
+      validPage(location.hash.slice(1))
+        ? (location.hash.slice(1) as Page)
+        : "home",
+    ),
+    [more, setMore] = useState(false),
+    [, update] = useState(0),
+    [toast, setToast] = useState(""),
+    [network, setNetwork] = useState(navigator.onLine),
+    [updateWorker, setUpdateWorker] = useState<ServiceWorker>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const notify = (text: string) => {
+    setToast(text);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 6500);
+  };
+  const go = (p: Page) => {
+    location.hash = p;
+    setMore(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  useEffect(() => {
+    const onHash = () => {
+      const p = location.hash.slice(1);
+      if (validPage(p)) setPage(p);
+    };
+    const rerender = () => update((n) => n + 1);
+    const net = () => setNetwork(navigator.onLine);
+    connection.addEventListener("change", rerender);
+    window.addEventListener("hashchange", onHash);
+    window.addEventListener("online", net);
+    window.addEventListener("offline", net);
+    void connection.restore();
+    const poll = setInterval(() => {
+      if (!document.hidden && connection.deviceOnline)
+        void connection.refresh();
+    }, 10000);
+    if ("serviceWorker" in navigator)
+      void navigator.serviceWorker
+        .register(import.meta.env.BASE_URL + "sw.js", {
+          scope: import.meta.env.BASE_URL,
+        })
+        .then((r) => {
+          if (r.waiting) setUpdateWorker(r.waiting);
+          r.addEventListener("updatefound", () => {
+            const w = r.installing;
+            w?.addEventListener("statechange", () => {
+              if (w.state === "installed" && navigator.serviceWorker.controller)
+                setUpdateWorker(w);
+            });
+          });
+        })
+        .catch(() => notify("Offline-Cache konnte nicht eingerichtet werden."));
+    return () => {
+      clearInterval(poll);
+      connection.removeEventListener("change", rerender);
+      window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("online", net);
+      window.removeEventListener("offline", net);
+    };
+  }, []);
+  const connected =
+    connection.status === "connected" && connection.deviceOnline;
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <a className="brand" href="#home">
+          <Logo />
+          <span>
+            BRUCE<span>CONTROL</span>
+          </span>
+          <small>01</small>
+        </a>
+        <div className="sidebar-label">DEINE STEUERZENTRALE</div>
+        <nav>
+          {Object.entries(pages).map(([id, label]) => {
+            const Icon = icons[id as Page];
+            return (
+              <button
+                key={id}
+                className={page === id ? "active" : ""}
+                onClick={() => go(id as Page)}
+              >
+                <Icon size={19} />
+                {label}
+                {page === id && <span className="nav-indicator" />}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="sidebar-footer">
+          <ShieldCheck size={18} />
+          <span>
+            Private Verbindung<small>Endpunkte mit TLS geschützt</small>
+          </span>
+        </div>
+      </aside>
+      <div className="main-shell">
+        <header className="topbar">
+          <a className="mobile-brand" href="#home">
+            <Logo />
+            <b>
+              BRUCE <span>CONTROL</span>
+            </b>
+          </a>
+          <div className="breadcrumb">
+            Workspace <ChevronRight size={13} />
+            <b>{pages[page]}</b>
+          </div>
+          <div className="topbar-right">
+            <span className={"connection-pill " + (connected ? "online" : "")}>
+              <span />
+              {!network
+                ? "App offline"
+                : connected
+                  ? "Gerät verbunden"
+                  : connection.status === "reconnecting"
+                    ? "Verbinde erneut …"
+                    : "Kein Gerät verbunden"}
+            </span>
+            <button
+              className="icon-button"
+              title="Einstellungen"
+              onClick={() => go("settings")}
+            >
+              <Settings2 size={19} />
+            </button>
+          </div>
+        </header>
+        {!network && (
+          <div className="offline-banner">
+            Offline · Deine Bibliothek und gespeicherte Tracks sind weiterhin
+            verfügbar.
+          </div>
+        )}
+        {updateWorker && (
+          <div className="update-banner">
+            Ein App-Update ist bereit.
+            <Button
+              quiet
+              onClick={() => {
+                updateWorker.postMessage("SKIP_WAITING");
+                navigator.serviceWorker.addEventListener(
+                  "controllerchange",
+                  () => location.reload(),
+                  { once: true },
+                );
+              }}
+            >
+              Jetzt aktualisieren
+            </Button>
+          </div>
+        )}
+        <main key={page} className="page">
+          <Suspense
+            fallback={<div className="empty">GPS Center wird geladen …</div>}
+          >
+            {page === "home" ? (
+              <Dashboard go={go} />
+            ) : page === "remote" ? (
+              <Remote notify={notify} />
+            ) : page === "modules" ? (
+              <Modules notify={notify} />
+            ) : page === "gps" ? (
+              <GpsCenter notify={notify} />
+            ) : page === "library" ? (
+              <Library notify={notify} />
+            ) : page === "files" ? (
+              <Files notify={notify} />
+            ) : page === "terminal" ? (
+              <Terminal notify={notify} />
+            ) : (
+              <Settings notify={notify} />
+            )}
+          </Suspense>
+          <footer className="page-footer">
+            <span>
+              <Logo /> BRUCE CONTROL
+            </span>
+            <small>Dein Gerät. Deine Kontrolle.</small>
+            <small>TESTVERSION 0.1.0</small>
+          </footer>
+        </main>
+      </div>
+      <nav className="bottom-nav">
+        {(["home", "remote", "modules", "gps"] as Page[]).map((id) => {
+          const Icon = icons[id];
+          return (
+            <button
+              className={page === id ? "active" : ""}
+              key={id}
+              onClick={() => go(id)}
+            >
+              <Icon size={22} />
+              <span>
+                {id === "home"
+                  ? "Home"
+                  : id === "remote"
+                    ? "Remote"
+                    : id === "gps"
+                      ? "GPS"
+                      : pages[id]}
+              </span>
+            </button>
+          );
+        })}
+        <button
+          className={
+            ["library", "files", "terminal", "settings"].includes(page)
+              ? "active"
+              : ""
+          }
+          onClick={() => setMore(true)}
+        >
+          <MoreHorizontal size={23} />
+          <span>Mehr</span>
+        </button>
+      </nav>
+      {more && (
+        <div className="sheet-backdrop" onClick={() => setMore(false)}>
+          <div
+            className="sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Weitere Werkzeuge"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sheet-handle" />
+            <div className="card-heading">
+              <h2>Deine Werkzeuge</h2>
+              <Button quiet onClick={() => setMore(false)} title="Schließen">
+                <X size={20} />
+              </Button>
+            </div>
+            {(["library", "files", "terminal", "settings"] as Page[]).map(
+              (p) => {
+                const Icon = icons[p];
+                return (
+                  <button className="sheet-link" key={p} onClick={() => go(p)}>
+                    <Icon size={21} />
+                    {pages[p]}
+                    <ChevronRight size={17} />
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      )}
+      {toast && (
+        <div role="status" className="toast">
+          <CircleHelp size={18} />
+          <span>{toast}</span>
+          <button title="Meldung schließen" onClick={() => setToast("")}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
-function Remote({notify}:{notify:(s:string)=>void}){
- const canvas=useRef<HTMLCanvasElement>(null),lastFrame=useRef<Uint8Array|undefined>(undefined),busy=useRef(false),[live,setLive]=useState(false),[frameTime,setFrameTime]=useState<number>(),[scale,setScale]=useState(100),[long,setLong]=useState(false),[pressed,setPressed]=useState(false),rendering=useRef(false);
- const grab=async()=>{if(busy.current||document.hidden||!connection.can('screen.get'))return;busy.current=true;try{await connection.command('screen.get');}catch(e){notify((e as Error).message);setLive(false);}finally{busy.current=false;}};
- useEffect(()=>{const show=(e:Event)=>{if(!canvas.current||rendering.current)return;rendering.current=true;const data=new Uint8Array((e as CustomEvent<ArrayBuffer>).detail);lastFrame.current=data;void renderScreen(canvas.current,data).then(()=>setFrameTime(Date.now())).catch(e=>notify(e.message)).finally(()=>{rendering.current=false;});};connection.addEventListener('screen',show);return()=>connection.removeEventListener('screen',show);},[]);
- useEffect(()=>{if(!live)return;void grab();const timer=setInterval(()=>void grab(),1500);return()=>clearInterval(timer);},[live]);
- async function press(key:string){if(pressed)return;setPressed(true);try{await connection.command('input.press',{key,duration:long?700:10});setTimeout(()=>void grab(),220);}catch(e){notify((e as Error).message);}finally{setPressed(false);}}
- return <><Section eyebrow="DAS ORIGINALE MENÜ. IN DEINER HAND." title="Fernsteuerung" right={<span className="tag">{frameTime?new Date(frameTime).toLocaleTimeString('de-DE'):'Kein Bildschirm empfangen'}</span>}/><div className="remote-layout"><Card className="remote-screen-card"><div className="card-heading"><h3><MonitorIcon/> Gerätebildschirm</h3><span className={'tag '+(live?'cyan':'')}>{live?'Live · 1,5 s':'Manuell'}</span></div><div className="screen-shell" style={{maxWidth:scale+'%'}}><canvas ref={canvas} width={320} height={170} aria-label="Empfangener Bruce-Gerätebildschirm"/>{!frameTime&&<div className="screen-empty"><ScanLine size={35}/><span>Dein Display erscheint hier.</span><small>{connection.deviceOnline?'Bildschirm abrufen, um zu starten.':'Verbinde zuerst deinen Bruce.'}</small></div>}</div><div className="row wrap"><Button disabled={!connection.can('screen.get')} onClick={()=>void grab()}><RefreshCw size={16}/>Aktualisieren</Button><Button quiet disabled={!connection.can('screen.get')} onClick={()=>setLive(!live)}>{live?'Live beenden':'Live starten'}</Button><Button quiet disabled={!frameTime} title="Screenshot speichern" onClick={()=>{const a=document.createElement('a');a.download='bruce-screen.png';a.href=canvas.current!.toDataURL();a.click();}}><Download size={17}/></Button><Button quiet title="Bildschirm Vollbild" onClick={()=>{const e=canvas.current;if(e?.requestFullscreen)void e.requestFullscreen().catch(()=>notify('Vollbild wird hier nicht unterstützt.'));else notify('Für eine größere Ansicht das iPhone ins Querformat drehen.');}}><Maximize2 size={17}/></Button></div><label>Darstellungsgröße<input type="range" min="65" max="100" value={scale} onChange={e=>setScale(Number(e.target.value))}/></label></Card><Card className="remote-controls"><div className="card-heading"><h3>Navigation</h3><Command size={17}/></div><p>Ein Tastendruck wird einmal ausgelöst. Keine Wiederholung bei Verbindungsabbruch.</p><div className="dpad"><Button title="Nach oben" disabled={!connection.can('input.press')||pressed} className="up" onClick={()=>void press('up')}><ArrowUp/></Button><Button title="Vorheriger Menüpunkt" disabled={!connection.can('input.press')||pressed} className="left" onClick={()=>void press('prev')}><ArrowLeft/></Button><Button title="Bestätigen" disabled={!connection.can('input.press')||pressed} className="center" onClick={()=>void press('sel')}><Check/></Button><Button title="Nächster Menüpunkt" disabled={!connection.can('input.press')||pressed} className="right" onClick={()=>void press('next')}><ArrowRight/></Button><Button title="Nach unten" disabled={!connection.can('input.press')||pressed} className="down" onClick={()=>void press('down')}><ArrowDown/></Button></div><Button quiet disabled={!connection.can('input.press')||pressed} onClick={()=>void press('esc')}><ArrowLeft size={17}/>Zurück</Button><label className="check"><input type="checkbox" checked={long} onChange={e=>setLong(e.target.checked)}/>Langer Tastendruck (700 ms)</label><Notice>Zeichenbefehle aus Bruces Navigator. Schrift und bildbasierte Ansichten können vom physischen Display abweichen.</Notice></Card></div></>;
+export function Logo() {
+  return (
+    <svg className="logo" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <path
+        d="M8 6h17l8 8-8 6 8 7-8 7H8V6Z"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      />
+      <path
+        d="M15 12h8l3 3-5 3h-6v-6Zm0 11h7l4 4-4 2h-7v-6Z"
+        fill="currentColor"
+      />
+      <path d="M3 14v12M37 16v8" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
 }
-function MonitorIcon(){return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8m-4-5v5"/></svg>;}
+function DeviceArt() {
+  return (
+    <svg
+      viewBox="0 0 440 240"
+      className="device-art"
+      aria-label="Illustration des T-Embed. Kein echter Gerätebildschirm."
+    >
+      <defs>
+        <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#34404a" />
+          <stop offset=".5" stopColor="#141d25" />
+          <stop offset="1" stopColor="#263540" />
+        </linearGradient>
+        <linearGradient id="knob" x1="0" y1="0" x2="1" y2="1">
+          <stop stopColor="#596675" />
+          <stop offset=".4" stopColor="#202c37" />
+          <stop offset="1" stopColor="#0a1118" />
+        </linearGradient>
+        <filter id="shadow">
+          <feDropShadow dx="0" dy="12" stdDeviation="12" floodOpacity=".6" />
+        </filter>
+      </defs>
+      <g transform="translate(29 37) rotate(-8 180 80)" filter="url(#shadow)">
+        <path d="M327 40h45v9h-45z" fill="#263844" />
+        <rect x="363" y="25" width="10" height="36" rx="4" fill="#40505d" />
+        <path
+          d="M42 12h259q24 0 24 24v119q0 24-24 24H42q-24 0-24-24V36q0-24 24-24Z"
+          fill="url(#body)"
+          stroke="#526574"
+        />
+        <rect
+          x="37"
+          y="33"
+          width="192"
+          height="126"
+          rx="11"
+          fill="#02080c"
+          stroke="#415361"
+        />
+        <rect x="45" y="41" width="176" height="110" rx="6" fill="#07121b" />
+        <path
+          d="M103 67h43l13 12-16 12 16 13-16 12h-40V67Z"
+          stroke="#164052"
+          strokeWidth="2"
+        />
+        <text
+          x="133"
+          y="138"
+          fontSize="7"
+          fill="#547182"
+          textAnchor="middle"
+          fontFamily="monospace"
+        >
+          BRUCE · NETWORK BRIDGE
+        </text>
+        <circle
+          cx="276"
+          cy="79"
+          r="35"
+          fill="#09131c"
+          stroke="#235166"
+          strokeWidth="3"
+        />
+        <circle cx="276" cy="79" r="29" fill="url(#knob)" stroke="#5b6d7a" />
+        <circle
+          cx="276"
+          cy="79"
+          r="22"
+          fill="none"
+          stroke="#344552"
+          strokeDasharray="1 4"
+          strokeWidth="3"
+        />
+        <rect
+          x="263"
+          y="131"
+          width="25"
+          height="10"
+          rx="5"
+          fill="#0a141c"
+          stroke="#526574"
+        />
+        {[53, 74, 95, 116, 137, 158, 179].map((x) => (
+          <circle key={x} cx={x} cy="168" r="2" fill="#27617a" />
+        ))}
+        <text x="41" y="26" fontSize="6" fill="#91a7b7" fontFamily="monospace">
+          LILYGO / T-EMBED CC1101 PLUS
+        </text>
+        <circle cx="29" cy="23" r="2.5" fill="#0a1017" />
+        <circle cx="314" cy="166" r="2.5" fill="#0a1017" />
+      </g>
+    </svg>
+  );
+}
+function Dashboard({ go }: { go: (p: Page) => void }) {
+  const d = connection.info,
+    [quick, setQuick] = useState<string[]>(["remote", "gps", "files"]),
+    [history, setHistory] = useState<number[]>([]);
+  useEffect(() => {
+    void setting<string[]>("quick").then((q) => {
+      if (q) setQuick(q);
+    });
+  }, []);
+  useEffect(() => {
+    if (d) setHistory((h) => [...h.slice(-23), d.heapFree]);
+  }, [d]);
+  const online = connection.deviceOnline && !!d;
+  return (
+    <>
+      <Section
+        eyebrow="ALLES IM BLICK"
+        title="Dein Bruce. Deine Kontrolle."
+        right={
+          <span className="date-label">
+            {new Date().toLocaleDateString("de-DE", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </span>
+        }
+      />
+      <div className="dashboard-grid">
+        <Card className="device-card">
+          <div className="card-heading">
+            <span className="eyebrow">MEIN GERÄT</span>
+            <span className={"tag " + (online ? "cyan" : "")}>
+              <span className="status-dot" />
+              {online ? "Online" : "Nicht verbunden"}
+            </span>
+          </div>
+          <div className="device-info">
+            <h2>{d?.board || "T-Embed CC1101 Plus"}</h2>
+            <p>
+              {d
+                ? "Firmware " + d.firmware + " · Bridge " + d.bridge
+                : "Verbinde dein Gerät mit deiner Steuerzentrale."}
+            </p>
+          </div>
+          <DeviceArt />
+          <div className="device-bottom">
+            <div className="device-connection">
+              <div className="signal-icon">
+                <Wifi size={20} />
+              </div>
+              <span>
+                {online ? "Sicher über WSS" : "Bereit für die erste Verbindung"}
+                <small>
+                  {online ? d?.ssid : "iPhone-Hotspot → Relay → Bruce"}
+                </small>
+              </span>
+            </div>
+            <Button onClick={() => go(online ? "remote" : "settings")}>
+              {online ? "Steuern" : "Gerät koppeln"}
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </Card>
+        <Card className="connection-card">
+          <div className="card-heading">
+            <h3>
+              <Activity size={18} /> Verbindung
+            </h3>
+            <ShieldCheck size={18} className="muted" />
+          </div>
+          <div className={"connection-orbit " + (online ? "is-online" : "")}>
+            <div className="orbit one" />
+            <div className="orbit two" />
+            <div className="orbit-core">
+              <Link2 size={30} />
+            </div>
+            <span className="orbit-node phone" />
+            <span className="orbit-node bruce" />
+          </div>
+          <div className="connection-state">
+            <h3>{online ? "Alles verbunden." : "Dein Bruce wartet."}</h3>
+            <p>
+              {online
+                ? "Authentifizierte Sitzung aktiv"
+                : "Kopple dein Gerät einmalig per Code."}
+            </p>
+          </div>
+          <div className="connection-route">
+            <span>iPhone</span>
+            <i />
+            <span>Relay</span>
+            <i />
+            <span>Bruce</span>
+          </div>
+          <div className="divider" />
+          <dl>
+            <dt>Transport</dt>
+            <dd>{connection.status === "connected" ? "WSS / TLS" : "—"}</dd>
+            <dt>Geräte-IP</dt>
+            <dd className="mono">{d?.ip || "—"}</dd>
+            <dt>Zuletzt verbunden</dt>
+            <dd>
+              {connection.lastConnected
+                ? new Date(connection.lastConnected).toLocaleTimeString(
+                    "de-DE",
+                    { hour: "2-digit", minute: "2-digit" },
+                  )
+                : "Noch nicht"}
+            </dd>
+          </dl>
+        </Card>
+        <Card className="system-card">
+          <div className="card-heading">
+            <h3>
+              <Gauge size={18} /> Systemstatus
+            </h3>
+            <Button
+              quiet
+              title="Status aktualisieren"
+              onClick={() => void connection.refresh()}
+              disabled={!connection.deviceOnline}
+            >
+              <RefreshCw size={15} />
+            </Button>
+          </div>
+          <div className="system-rings">
+            <Ring
+              label="Arbeitsspeicher"
+              free={d?.heapFree}
+              total={d?.heapTotal}
+            />
+            <Ring label="PSRAM" free={d?.psramFree} total={d?.psramTotal} />
+            <Ring
+              label="LittleFS"
+              free={d ? d.fsTotal - d.fsUsed : undefined}
+              total={d?.fsTotal}
+            />
+          </div>
+          <div className="metrics four">
+            <Stat
+              label="Betriebsdauer"
+              value={
+                d
+                  ? Math.floor(d.uptime / 3600) +
+                    "h " +
+                    Math.floor((d.uptime % 3600) / 60) +
+                    "m"
+                  : "—"
+              }
+            />
+            <Stat
+              label="WLAN-Signal"
+              value={d?.rssi ?? "—"}
+              unit={d ? "dBm" : ""}
+            />
+            <Stat
+              label="SD-Karte"
+              value={d ? (d.sd ? "Eingehängt" : "Nicht erkannt") : "—"}
+            />
+            <Stat
+              label="Batterie"
+              value={
+                d?.battery !== undefined ? d.battery + "%" : "Nicht gemeldet"
+              }
+            />
+          </div>
+          {history.length > 1 && (
+            <div className="history">
+              <small>Freier Heap · aktuelle Sitzung</small>
+              <svg viewBox="0 0 300 35" preserveAspectRatio="none">
+                <polyline
+                  points={history
+                    .map(
+                      (h, i) =>
+                        `${(i * 300) / (history.length - 1)},${33 - (h / (d?.heapTotal || 1)) * 30}`,
+                    )
+                    .join(" ")}
+                  fill="none"
+                  stroke="#33c9e5"
+                  strokeWidth="1.6"
+                />
+              </svg>
+            </div>
+          )}
+        </Card>
+        <Card className="quick-card">
+          <div className="card-heading">
+            <h3>Schnellzugriff</h3>
+            <button className="text-button" onClick={() => go("settings")}>
+              Anpassen
+            </button>
+          </div>
+          <div className="quick-grid">
+            {quick.filter(validPage).map((p) => {
+              const Icon = icons[p];
+              return (
+                <button key={p} onClick={() => go(p)}>
+                  <Icon size={21} />
+                  <span>{pages[p]}</span>
+                  <ChevronRight size={15} />
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+      <div className="section-sub">
+        <div>
+          <span className="eyebrow">BEREIT, WENN DU ES BIST</span>
+          <h2>Mehr aus deinem Gerät.</h2>
+        </div>
+        <button className="text-button" onClick={() => go("modules")}>
+          Alle Module <ArrowRight size={15} />
+        </button>
+      </div>
+      <div className="feature-row">
+        <button onClick={() => go("remote")}>
+          <div className="feature-icon blue">
+            <Gamepad2 size={24} />
+          </div>
+          <h3>In deiner Hand.</h3>
+          <p>Das originale Bruce-Menü, direkt auf deinem iPhone.</p>
+          <span>
+            Fernsteuerung öffnen <ArrowRight size={15} />
+          </span>
+        </button>
+        <button onClick={() => go("gps")}>
+          <div className="feature-icon green">
+            <Satellite size={24} />
+          </div>
+          <h3>Deine nächste Route.</h3>
+          <p>Positionen entdecken, Tracks aufzeichnen, lokal behalten.</p>
+          <span>
+            GPS Center entdecken <ArrowRight size={15} />
+          </span>
+        </button>
+        <button onClick={() => go("library")}>
+          <div className="feature-icon purple">
+            <BookOpen size={24} />
+          </div>
+          <h3>Alles dabei.</h3>
+          <p>Eigene Signale, Dateien und Fernbedienungen an einem Ort.</p>
+          <span>
+            Zur Bibliothek <ArrowRight size={15} />
+          </span>
+        </button>
+      </div>
+      <Notice>
+        Testversion · Gerätewerte erscheinen ausschließlich nach einer echten
+        Verbindung. Firmware und iOS-Hotspot müssen noch an deiner Hardware
+        geprüft werden.
+      </Notice>
+    </>
+  );
+}
+function Remote({ notify }: { notify: (s: string) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null),
+    lastFrame = useRef<Uint8Array | undefined>(undefined),
+    busy = useRef(false),
+    [live, setLive] = useState(false),
+    [frameTime, setFrameTime] = useState<number>(),
+    [scale, setScale] = useState(100),
+    [long, setLong] = useState(false),
+    [pressed, setPressed] = useState(false),
+    rendering = useRef(false);
+  const grab = async () => {
+    if (busy.current || document.hidden || !connection.can("screen.get"))
+      return;
+    busy.current = true;
+    try {
+      await connection.command("screen.get");
+    } catch (e) {
+      notify((e as Error).message);
+      setLive(false);
+    } finally {
+      busy.current = false;
+    }
+  };
+  useEffect(() => {
+    const show = (e: Event) => {
+      if (!canvas.current || rendering.current) return;
+      rendering.current = true;
+      const data = new Uint8Array((e as CustomEvent<ArrayBuffer>).detail);
+      lastFrame.current = data;
+      void renderScreen(canvas.current, data)
+        .then(() => setFrameTime(Date.now()))
+        .catch((e) => notify(e.message))
+        .finally(() => {
+          rendering.current = false;
+        });
+    };
+    connection.addEventListener("screen", show);
+    return () => connection.removeEventListener("screen", show);
+  }, []);
+  useEffect(() => {
+    if (!live) return;
+    void grab();
+    const timer = setInterval(() => void grab(), 1500);
+    return () => clearInterval(timer);
+  }, [live]);
+  async function press(key: string) {
+    if (pressed) return;
+    setPressed(true);
+    try {
+      await connection.command("input.press", {
+        key,
+        duration: long ? 700 : 10,
+      });
+      setTimeout(() => void grab(), 220);
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setPressed(false);
+    }
+  }
+  return (
+    <>
+      <Section
+        eyebrow="DAS ORIGINALE MENÜ. IN DEINER HAND."
+        title="Fernsteuerung"
+        right={
+          <span className="tag">
+            {frameTime
+              ? new Date(frameTime).toLocaleTimeString("de-DE")
+              : "Kein Bildschirm empfangen"}
+          </span>
+        }
+      />
+      <div className="remote-layout">
+        <Card className="remote-screen-card">
+          <div className="card-heading">
+            <h3>
+              <MonitorIcon /> Gerätebildschirm
+            </h3>
+            <span className={"tag " + (live ? "cyan" : "")}>
+              {live ? "Live · 1,5 s" : "Manuell"}
+            </span>
+          </div>
+          <div className="screen-shell" style={{ maxWidth: scale + "%" }}>
+            <canvas
+              ref={canvas}
+              width={320}
+              height={170}
+              aria-label="Empfangener Bruce-Gerätebildschirm"
+            />
+            {!frameTime && (
+              <div className="screen-empty">
+                <ScanLine size={35} />
+                <span>Dein Display erscheint hier.</span>
+                <small>
+                  {connection.deviceOnline
+                    ? "Bildschirm abrufen, um zu starten."
+                    : "Verbinde zuerst deinen Bruce."}
+                </small>
+              </div>
+            )}
+          </div>
+          <div className="row wrap">
+            <Button
+              disabled={!connection.can("screen.get")}
+              onClick={() => void grab()}
+            >
+              <RefreshCw size={16} />
+              Aktualisieren
+            </Button>
+            <Button
+              quiet
+              disabled={!connection.can("screen.get")}
+              onClick={() => setLive(!live)}
+            >
+              {live ? "Live beenden" : "Live starten"}
+            </Button>
+            <Button
+              quiet
+              disabled={!frameTime}
+              title="Screenshot speichern"
+              onClick={() => {
+                const a = document.createElement("a");
+                a.download = "bruce-screen.png";
+                a.href = canvas.current!.toDataURL();
+                a.click();
+              }}
+            >
+              <Download size={17} />
+            </Button>
+            <Button
+              quiet
+              title="Bildschirm Vollbild"
+              onClick={() => {
+                const e = canvas.current;
+                if (e?.requestFullscreen)
+                  void e
+                    .requestFullscreen()
+                    .catch(() =>
+                      notify("Vollbild wird hier nicht unterstützt."),
+                    );
+                else
+                  notify(
+                    "Für eine größere Ansicht das iPhone ins Querformat drehen.",
+                  );
+              }}
+            >
+              <Maximize2 size={17} />
+            </Button>
+          </div>
+          <label>
+            Darstellungsgröße
+            <input
+              type="range"
+              min="65"
+              max="100"
+              value={scale}
+              onChange={(e) => setScale(Number(e.target.value))}
+            />
+          </label>
+        </Card>
+        <Card className="remote-controls">
+          <div className="card-heading">
+            <h3>Navigation</h3>
+            <Command size={17} />
+          </div>
+          <p>
+            Ein Tastendruck wird einmal ausgelöst. Keine Wiederholung bei
+            Verbindungsabbruch.
+          </p>
+          <div className="dpad">
+            <Button
+              title="Nach oben"
+              disabled={!connection.can("input.press") || pressed}
+              className="up"
+              onClick={() => void press("up")}
+            >
+              <ArrowUp />
+            </Button>
+            <Button
+              title="Vorheriger Menüpunkt"
+              disabled={!connection.can("input.press") || pressed}
+              className="left"
+              onClick={() => void press("prev")}
+            >
+              <ArrowLeft />
+            </Button>
+            <Button
+              title="Bestätigen"
+              disabled={!connection.can("input.press") || pressed}
+              className="center"
+              onClick={() => void press("sel")}
+            >
+              <Check />
+            </Button>
+            <Button
+              title="Nächster Menüpunkt"
+              disabled={!connection.can("input.press") || pressed}
+              className="right"
+              onClick={() => void press("next")}
+            >
+              <ArrowRight />
+            </Button>
+            <Button
+              title="Nach unten"
+              disabled={!connection.can("input.press") || pressed}
+              className="down"
+              onClick={() => void press("down")}
+            >
+              <ArrowDown />
+            </Button>
+          </div>
+          <Button
+            quiet
+            disabled={!connection.can("input.press") || pressed}
+            onClick={() => void press("esc")}
+          >
+            <ArrowLeft size={17} />
+            Zurück
+          </Button>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={long}
+              onChange={(e) => setLong(e.target.checked)}
+            />
+            Langer Tastendruck (700 ms)
+          </label>
+          <Notice>
+            Zeichenbefehle aus Bruces Navigator. Schrift und bildbasierte
+            Ansichten können vom physischen Display abweichen.
+          </Notice>
+        </Card>
+      </div>
+    </>
+  );
+}
+function MonitorIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <rect x="3" y="3" width="18" height="13" rx="2" />
+      <path d="M8 21h8m-4-5v5" />
+    </svg>
+  );
+}

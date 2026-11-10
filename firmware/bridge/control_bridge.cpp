@@ -123,6 +123,7 @@ void socketEvent(WStype_t type,uint8_t *payload,size_t length){
  if(t=="command"&&online){auto s=new String((char*)payload,length);if(xQueueSend(incoming,&s,0)!=pdTRUE){JsonDocument r;r["v"]=1;r["type"]="result";r["id"]=d["id"];r["ok"]=false;r["error"]="Gerät beschäftigt";sendJson(r);delete s;}}
 }
 void networkTask(void*){
+ WiFi.setAutoReconnect(true);
  bool started=false;uint32_t lastPing=0;
  while(true){
   if(WiFi.status()!=WL_CONNECTED){online=false;started=false;socket.disconnect();vTaskDelay(pdMS_TO_TICKS(2000));continue;}
