@@ -31,3 +31,6 @@ p=checkout/'platformio.ini';s=p.read_text().replace('fastled/FastLED @^3.10.3','
 if 'links2004/WebSockets' not in s:s=s.replace('lib_deps =\n','lib_deps =\n\tlinks2004/WebSockets@2.7.2\n',1)
 p.write_text(s)
 print('Bridge applied to',checkout)
+
+# Upstream IR receive handler leaked its allocated reader on timeout.
+patch(Path("src/core/serial_commands/ir_commands.cpp"),"    if (r.length() == 0) return false;","    if (r.length() == 0) { delete i; return false; }")

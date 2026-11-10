@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 // Public Google Trust Services and ISRG roots, Mozilla trust store.
 static const char BRIDGE_CA[] PROGMEM = R"PEM(-----BEGIN CERTIFICATE-----
 MIIFVzCCAz+gAwIBAgINAgPlk28xsBNJiGuiFzANBgkqhkiG9w0BAQwFADBHMQsw
